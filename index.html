@@ -2046,7 +2046,7 @@
 
           try {
             // 🎯 SKU自動採番: 既存の最大No+1
-            const { data: maxRows } = await sb.from('inventories').select('no').order('no', { ascending: false }).limit(1);
+            const { data: maxRows } = await sb.from('inventories').select('no').not('no', 'is', null).order('no', { ascending: false }).limit(1);
             const nextNo = (maxRows && maxRows.length > 0 && maxRows[0].no) ? maxRows[0].no + 1 : 1;
 
             const now = new Date();
@@ -2925,13 +2925,28 @@
         const { data: orig, error: fetchErr } = await sb.from('inventories').select('*').eq('id', id).single();
         if (fetchErr) throw fetchErr;
 
+        const { data: maxRows } = await sb.from('inventories').select('no').not('no', 'is', null).order('no', { ascending: false }).limit(1);
+        const nextNo = (maxRows && maxRows.length > 0 && maxRows[0].no) ? maxRows[0].no + 1 : 1;
+
+        // 元のSKU(No-仕入日-ASIN)から日付部分だけ引き継いで、Noを採番し直す
+        let datePart = '';
+        if (orig.sku) {
+          const parts = String(orig.sku).split('-');
+          if (parts.length >= 2) datePart = parts[1];
+        }
+        if (!datePart) {
+          const now = new Date();
+          datePart = `${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}`;
+        }
+        const newSku = `${nextNo}-${datePart}-${orig.asin}`;
+
         const newRow = {
           asin: orig.asin, title: orig.title, model: orig.model, jan: orig.jan,
           supplier: orig.supplier, purchase_url: orig.purchase_url, purchase_id: orig.purchase_id,
           condition: orig.condition, description: orig.description, image_url: orig.image_url,
           buy_price: orig.buy_price, shipping_cost: orig.shipping_cost, sell_price: orig.sell_price,
           fba_fee: orig.fba_fee, referral_fee: orig.referral_fee,
-          is_listed: false, sku: orig.sku,
+          is_listed: false, no: nextNo, sku: newSku,
           user_id: currentUser.id
         };
         const { error: insertErr } = await sb.from('inventories').insert(newRow);
