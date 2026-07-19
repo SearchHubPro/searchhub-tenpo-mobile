@@ -821,9 +821,13 @@
 
       <div style="background:#fff5f5; padding:10px; border-radius:8px; margin-top:12px; border:1px solid #feb2b2;">
         <div style="font-size:12px; font-weight:bold; color:#c53030; margin-bottom:8px;"><i class="fas fa-receipt"></i> 販売情報（古物台帳用・売却時に入力）</div>
-        <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:8px; min-width:0;">
-          <div style="min-width:0;"><label style="font-size:11px; font-weight:bold; color:#718096;">販売日</label><input type="date" id="edit_saleDate" oninput="calcEditProfit()" style="width:100%; padding:8px; box-sizing:border-box;"></div>
-          <div style="min-width:0;"><label style="font-size:11px; font-weight:bold; color:#718096;">注文番号</label><input type="text" id="edit_orderNum" style="width:100%; padding:8px; box-sizing:border-box;"></div>
+        <div style="margin-bottom:8px;">
+          <label style="font-size:11px; font-weight:bold; color:#718096; display:block;">販売日</label>
+          <input type="date" id="edit_saleDate" oninput="calcEditProfit()" style="width:100%; padding:8px; box-sizing:border-box; margin-top:2px;">
+        </div>
+        <div style="margin-bottom:8px;">
+          <label style="font-size:11px; font-weight:bold; color:#718096; display:block;">注文番号</label>
+          <input type="text" id="edit_orderNum" style="width:100%; padding:8px; box-sizing:border-box; margin-top:2px;">
         </div>
         <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:8px; margin-bottom:8px;">
           <div><label style="font-size:11px; font-weight:bold; color:#718096;">売上額</label><input type="number" id="edit_actualSales" oninput="calcEditProfit()" style="width:100%; padding:8px; box-sizing:border-box; text-align:right;"></div>
@@ -868,17 +872,15 @@
       <div id="flea_uploadStatus" style="font-size:11px; color:#3182ce; margin-top:4px;"></div>
       <img id="flea_imagePreview" src="" style="width:60px; height:60px; object-fit:contain; border:1px solid #eee; border-radius:6px; background:#f8fafc; display:none; margin-top:6px;">
 
-      <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:8px; min-width:0;">
-        <div style="min-width:0;">
-          <label style="font-size:11px; font-weight:bold;">仕入れ日</label>
-          <input type="date" id="flea_purchaseDate" style="width:100%; padding:8px; box-sizing:border-box;">
-        </div>
-        <div style="min-width:0;">
-          <label style="font-size:11px; font-weight:bold;">仕入先<span style="color:#e53e3e;">*</span></label>
-          <select id="flea_supplier" style="width:100%; padding:8px; box-sizing:border-box; border:1px solid #ccc; border-radius:6px; outline:none;">
+      <div style="margin-top:8px;">
+        <label style="font-size:11px; font-weight:bold; display:block;">仕入れ日</label>
+        <input type="date" id="flea_purchaseDate" style="width:100%; padding:8px; box-sizing:border-box; margin-top:2px;">
+      </div>
+      <div style="margin-top:8px;">
+        <label style="font-size:11px; font-weight:bold; display:block;">仕入先<span style="color:#e53e3e;">*</span></label>
+        <select id="flea_supplier" style="width:100%; padding:8px; box-sizing:border-box; border:1px solid #ccc; border-radius:6px; outline:none; margin-top:2px;">
             <option value="">読込中...</option>
           </select>
-        </div>
       </div>
 
       <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:8px;">
