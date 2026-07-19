@@ -614,7 +614,7 @@
         <span style="font-size:12px; font-weight:bold; color:#4a5568;" id="inventoryCount">在庫を読み込み中...</span>
         
         <div style="display:flex; gap:8px;">
-          <button onclick="loadInventoryPrice()" style="background:#1a365d; color:white; border:none; padding:6px 12px; border-radius:6px; font-size:11px; font-weight:bold;">
+          <button onclick="confirmAndLoadInventoryPrice()" style="background:#1a365d; color:white; border:none; padding:6px 12px; border-radius:6px; font-size:11px; font-weight:bold;">
             <i class="fas fa-sync-alt"></i> Keepaで更新
           </button>
         </div>
@@ -1365,7 +1365,11 @@
       
       // ーーー この下は元からあるコードそのまま ーーー
       if (viewId === 'view-price') {
-        if (globalInventoryData.length === 0) loadInventoryPrice(); else renderInventoryList();
+        if (globalInventoryData.length > 0) {
+          renderInventoryList();
+        } else {
+          openInventoryPriceScreen();
+        }
       }
       if (viewId === 'view-ledger') {
         if (globalLedgerData.length === 0) loadLedgerData(); else renderLedgerList();
@@ -2105,6 +2109,60 @@
           }
         };
 
+        const PRICE_CACHE_KEY = "sh_price_cache_data";
+        const PRICE_CACHE_TIME_KEY = "sh_price_cache_time";
+
+        function savePriceCache(results) {
+          try {
+            localStorage.setItem(PRICE_CACHE_KEY, JSON.stringify(results));
+            localStorage.setItem(PRICE_CACHE_TIME_KEY, new Date().toISOString());
+          } catch(e) { /* 保存に失敗しても致命的ではないので無視 */ }
+        }
+
+        function loadPriceCacheTimeText() {
+          const t = localStorage.getItem(PRICE_CACHE_TIME_KEY);
+          if (!t) return "";
+          const d = new Date(t);
+          return `最終更新: ${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+        }
+
+        // 💡 画面を開いた時の入り口：キャッシュがあればそれを表示、無ければ確認してから検索
+        function openInventoryPriceScreen() {
+          const cacheRaw = localStorage.getItem(PRICE_CACHE_KEY);
+          if (cacheRaw) {
+            try {
+              globalInventoryData = JSON.parse(cacheRaw);
+              invCurrentPage = 1;
+              renderInventoryList();
+              const countEl = document.getElementById('inventoryCount');
+              const cacheTimeText = loadPriceCacheTimeText();
+              if (countEl && cacheTimeText) countEl.innerText = `現在の商品: ${globalInventoryData.length}件（${cacheTimeText}）`;
+              return;
+            } catch(e) { /* パース失敗時はキャッシュを無視して下に進む */ }
+          }
+          confirmAndLoadInventoryPrice();
+        }
+
+        function confirmAndLoadInventoryPrice() {
+          const ok = confirm(
+            "⚠️ Keepaのプランによっては、まとめて検索するとトークン（APIの利用枠）が足りなくなり、エラーで途中停止することがあります。\n\n" +
+            "特にKeepaの契約プランのトークン数が少ない場合はご注意ください。\n\n" +
+            "このままKeepaで検索を実行しますか？"
+          );
+          if (ok) {
+            loadInventoryPrice();
+          } else {
+            const resDiv = document.getElementById('priceResult');
+            const countEl = document.getElementById('inventoryCount');
+            resDiv.innerHTML = `<div class="card" style="text-align:center; padding:30px 10px; color:#718096;">
+              検索をキャンセルしました。<br><br>
+              <button onclick="confirmAndLoadInventoryPrice()" style="background:#1a365d; color:white; border:none; padding:10px 20px; border-radius:6px; font-size:13px; font-weight:bold; cursor:pointer;"><i class="fas fa-search"></i> 検索を実行する</button>
+            </div>`;
+            countEl.innerText = "未実行";
+            document.getElementById('price-pagination').style.display = 'none';
+          }
+        }
+
         async function loadInventoryPrice() {
           const resDiv = document.getElementById('priceResult'); const countEl = document.getElementById('inventoryCount');
           if (!currentUser) return;
@@ -2183,6 +2241,9 @@
             }
 
             globalInventoryData = results; invCurrentPage = 1; renderInventoryList();
+            savePriceCache(results);
+            const cacheTimeText = loadPriceCacheTimeText();
+            if (cacheTimeText) countEl.innerText = `現在の商品: ${results.length}件（${cacheTimeText}）`;
           } catch(err) { resDiv.innerHTML = '<div class="card" style="text-align:center; color:#e53e3e; font-weight:bold;">❌ 取得に失敗しました: ' + err.message + '</div>'; countEl.innerText = "通信失敗"; }
         }
 
@@ -2194,6 +2255,8 @@
           try {
             const { error } = await sb.from('inventories').update({ sell_price: newPrice }).eq('id', id);
             if (error) throw error;
+            const target = globalInventoryData.find(item => item.id === id);
+            if (target) { target.price = newPrice; savePriceCache(globalInventoryData); }
             showToast('✅ 価格を反映したで！');
           } catch(e) { alert('❌ 反映失敗: ' + e.message); }
           btnEl.innerHTML = originalText;
