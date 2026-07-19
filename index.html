@@ -1760,6 +1760,7 @@
               const firstImg = p.images[0]; imgRaw = (typeof firstImg === 'object') ? (firstImg.l || firstImg.m || firstImg.s) : firstImg;
             } else if (p.imagesCSV) imgRaw = p.imagesCSV.split(',')[0];
             let imageUrl = imgRaw ? (imgRaw.startsWith('http') ? imgRaw : 'https://images-na.ssl-images-amazon.com/images/I/' + imgRaw) : '';
+            window.tmpImageUrl = imageUrl;
             const avgUsed = p.stats.avg90 && p.stats.avg90[2] !== -1 ? p.stats.avg90[2] : 0;
             const minUsed = p.stats.current && p.stats.current[2] !== -1 ? p.stats.current[2] : 0;
             
@@ -1950,7 +1951,8 @@
             title: window.tmpTitle || "",
             model: window.tmpModel || "",
             fbaFee: window.tmpFbaFee || 0,
-            fee: Math.floor(sPrice * ((window.tmpFeePercent || 10) / 100))
+            fee: Math.floor(sPrice * ((window.tmpFeePercent || 10) / 100)),
+            imageUrl: window.tmpImageUrl || ""
           };
 
           document.getElementById("confirmDetails").innerHTML = 
@@ -2050,6 +2052,7 @@
               title: pendingRegData.title || "",
               model: pendingRegData.model || "",
               sku: sku,
+              image_url: pendingRegData.imageUrl || "",
               buy_price: Number(pendingRegData.buyPrice) || 0,
               shipping_cost: Number(pendingRegData.shipping) || 0,
               sell_price: Number(pendingRegData.sellPrice) || 0,
@@ -2283,7 +2286,7 @@
 
           try {
             const [invRes, expRes] = await Promise.all([
-              sb.from('inventories').select('asin, title, purchase_date, sale_date, order_number, buy_price, shipping_cost, sell_price, actual_sales, actual_shipping, actual_fee, fba_fee, referral_fee'),
+              sb.from('inventories').select('asin, title, image_url, purchase_date, sale_date, order_number, buy_price, shipping_cost, sell_price, actual_sales, actual_shipping, actual_fee, fba_fee, referral_fee'),
               sb.from('expenses').select('target_month, amount')
             ]);
             if (invRes.error) throw invRes.error;
@@ -2309,7 +2312,7 @@
                 purchaseSummary[pKey].profit += profit;
                 purchaseSummary[pKey].count += 1;
                 purchaseSummary[pKey].dates.add(row.purchase_date);
-                purchaseSummary[pKey].items.push({ date: `${m}/${d}`, asin, title, cost, sales, profit });
+                purchaseSummary[pKey].items.push({ date: `${m}/${d}`, asin, title, img: row.image_url, cost, sales, profit });
               }
 
               if (row.sale_date && row.order_number) {
@@ -2327,7 +2330,7 @@
                 salesSummary[sKey].cost += s_cost;
                 salesSummary[sKey].profit += s_profit;
                 salesSummary[sKey].count += 1;
-                salesSummary[sKey].items.push({ date: `${sm}/${sd}`, asin, title, orderNum: row.order_number, cost: s_cost, sales: s_sales, profit: s_profit });
+                salesSummary[sKey].items.push({ date: `${sm}/${sd}`, asin, title, img: row.image_url, orderNum: row.order_number, cost: s_cost, sales: s_sales, profit: s_profit });
               }
             });
 
@@ -2485,14 +2488,22 @@
           let html = "";
           pageItems.forEach(item => {
             let orderHtml = item.orderNum ? `<div style="font-size:10px; color:#a0aec0; margin-top:4px;">注文番号: ${escapeHtml(item.orderNum)}</div>` : "";
+            const thumbHtml = item.img 
+              ? `<div style="width:40px; height:40px; background:#fff; border:1px solid #eee; border-radius:6px; padding:2px; flex-shrink:0;"><img src="${item.img}" style="width:100%; height:100%; object-fit:contain;"></div>`
+              : `<div style="width:40px; height:40px; background:#f8fafc; border:1px solid #eee; border-radius:6px; flex-shrink:0;"></div>`;
             html += `
             <div class="card" style="padding:12px; margin-bottom:10px; border-left:4px solid ${isPurchase ? '#3182ce' : '#e53e3e'};">
                <div style="display:flex; justify-content:space-between; margin-bottom:6px; align-items:center;">
                   <span style="font-size:11px; font-weight:bold; color:#718096;"><i class="far fa-calendar-alt"></i> ${item.date}</span>
                   <span style="background:#e0f2fe; color:#0369a1; padding:2px 6px; border-radius:4px; font-size:10px; font-weight:bold;">${escapeHtml(item.asin)}</span>
                </div>
-               <div style="font-size:12px; font-weight:bold; color:#1a365d; margin-bottom:8px; line-height:1.4;">💎 ${escapeHtml(item.title)}</div>
-               ${orderHtml}
+               <div style="display:flex; gap:8px; align-items:flex-start; margin-bottom:8px;">
+                  ${thumbHtml}
+                  <div style="flex:1; min-width:0;">
+                    <div style="font-size:12px; font-weight:bold; color:#1a365d; line-height:1.4;">💎 ${escapeHtml(item.title)}</div>
+                    ${orderHtml}
+                  </div>
+               </div>
                <div style="display:flex; justify-content:space-between; align-items:flex-end; margin-top:8px; padding-top:8px; border-top:1px dashed #e2e8f0;">
                   <div style="font-size:11px; color:#718096; line-height:1.5;">仕入: <span style="color:#333; font-weight:bold;">¥${Number(item.cost).toLocaleString()}</span><br>販売: <span style="color:#333; font-weight:bold;">¥${Number(item.sales).toLocaleString()}</span></div>
                   <div style="text-align:right;"><div style="font-size:10px; color:#718096;">利益</div><div style="font-size:16px; font-weight:900; color:${item.profit >= 0 ? '#07A27B' : '#e53e3e'};">¥${Number(item.profit).toLocaleString()}</div></div>
@@ -2560,6 +2571,7 @@
             asin: row.asin,
             title: row.title,
             model: row.model,
+            imageUrl: row.image_url,
             sku: row.sku,
             condition: row.condition,
             description: row.description,
@@ -2700,6 +2712,10 @@
             </div>`;
         }
 
+        const thumbHtml = item.imageUrl 
+          ? `<div style="width:48px; height:48px; background:#fff; border:1px solid #eee; border-radius:8px; padding:2px; flex-shrink:0;"><img src="${item.imageUrl}" style="width:100%; height:100%; object-fit:contain;"></div>`
+          : `<div style="width:48px; height:48px; background:#f8fafc; border:1px solid #eee; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:8px; color:#a0aec0; flex-shrink:0; text-align:center;">No<br>Img</div>`;
+
         html += `
         <div class="card" style="padding:12px; margin-bottom:10px; border-left:4px solid ${borderColor};">
           <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:8px;">
@@ -2710,7 +2726,10 @@
             </div>
           </div>
 
-          <div style="font-size:13px; font-weight:bold; color:#1a365d; margin-bottom:8px; line-height:1.4;">💎 ${escapeHtml(item.title) || '(商品名なし)'}</div>
+          <div style="display:flex; gap:10px; margin-bottom:8px;">
+            ${thumbHtml}
+            <div style="flex:1; min-width:0; font-size:13px; font-weight:bold; color:#1a365d; line-height:1.4;">💎 ${escapeHtml(item.title) || '(商品名なし)'}</div>
+          </div>
 
           <div style="display:flex; align-items:center; flex-wrap:wrap; gap:6px; margin-bottom:8px;">
             <span style="font-family:monospace; background:#e0f2fe; color:#0369a1; padding:3px 6px; border-radius:4px; font-size:10px; font-weight:bold;">${escapeHtml(item.asin) || '-'}</span>
@@ -2838,7 +2857,7 @@
         const newRow = {
           asin: orig.asin, title: orig.title, model: orig.model, jan: orig.jan,
           supplier: orig.supplier, purchase_url: orig.purchase_url, purchase_id: orig.purchase_id,
-          condition: orig.condition, description: orig.description,
+          condition: orig.condition, description: orig.description, image_url: orig.image_url,
           buy_price: orig.buy_price, shipping_cost: orig.shipping_cost, sell_price: orig.sell_price,
           fba_fee: orig.fba_fee, referral_fee: orig.referral_fee,
           is_listed: false, sku: orig.sku,
