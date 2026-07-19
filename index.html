@@ -788,7 +788,7 @@
       <div style="display:flex; gap:8px; align-items:center;">
         <input type="text" id="edit_imageUrl" placeholder="https://... または右のボタンで撮影" oninput="updateEditImagePreview()" style="flex:1; padding:8px; box-sizing:border-box;">
         <button type="button" onclick="document.getElementById('edit_photoFile').click()" style="flex-shrink:0; background:#4a5568; color:white; border:none; padding:8px 10px; border-radius:6px; cursor:pointer;"><i class="fas fa-camera"></i></button>
-        <input type="file" id="edit_photoFile" accept="image/*" capture="environment" style="display:none;" onchange="handlePhotoFileSelect(event, 'edit')">
+        <input type="file" id="edit_photoFile" accept="image/*" style="display:none;" onchange="handlePhotoFileSelect(event, 'edit')">
         <img id="edit_imagePreview" src="" style="width:36px; height:36px; object-fit:contain; border:1px solid #eee; border-radius:6px; background:#f8fafc; display:none;">
       </div>
       <div id="edit_uploadStatus" style="font-size:11px; color:#3182ce; margin-top:4px;"></div>
@@ -821,9 +821,9 @@
 
       <div style="background:#fff5f5; padding:10px; border-radius:8px; margin-top:12px; border:1px solid #feb2b2;">
         <div style="font-size:12px; font-weight:bold; color:#c53030; margin-bottom:8px;"><i class="fas fa-receipt"></i> 販売情報（古物台帳用・売却時に入力）</div>
-        <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:8px;">
-          <div><label style="font-size:11px; font-weight:bold; color:#718096;">販売日</label><input type="date" id="edit_saleDate" oninput="calcEditProfit()" style="width:100%; padding:8px; box-sizing:border-box;"></div>
-          <div><label style="font-size:11px; font-weight:bold; color:#718096;">注文番号</label><input type="text" id="edit_orderNum" style="width:100%; padding:8px; box-sizing:border-box;"></div>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:8px; min-width:0;">
+          <div style="min-width:0;"><label style="font-size:11px; font-weight:bold; color:#718096;">販売日</label><input type="date" id="edit_saleDate" oninput="calcEditProfit()" style="width:100%; padding:8px; box-sizing:border-box;"></div>
+          <div style="min-width:0;"><label style="font-size:11px; font-weight:bold; color:#718096;">注文番号</label><input type="text" id="edit_orderNum" style="width:100%; padding:8px; box-sizing:border-box;"></div>
         </div>
         <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:8px; margin-bottom:8px;">
           <div><label style="font-size:11px; font-weight:bold; color:#718096;">売上額</label><input type="number" id="edit_actualSales" oninput="calcEditProfit()" style="width:100%; padding:8px; box-sizing:border-box; text-align:right;"></div>
@@ -863,17 +863,17 @@
       <div style="display:flex; gap:8px; align-items:center;">
         <input type="text" id="flea_imageUrl" placeholder="https://... または右のボタンで撮影" oninput="updateFleaImagePreview()" style="flex:1; padding:8px; box-sizing:border-box;">
         <button type="button" onclick="document.getElementById('flea_photoFile').click()" style="flex-shrink:0; background:#4a5568; color:white; border:none; padding:8px 10px; border-radius:6px; cursor:pointer;"><i class="fas fa-camera"></i></button>
-        <input type="file" id="flea_photoFile" accept="image/*" capture="environment" style="display:none;" onchange="handlePhotoFileSelect(event, 'flea')">
+        <input type="file" id="flea_photoFile" accept="image/*" style="display:none;" onchange="handlePhotoFileSelect(event, 'flea')">
       </div>
       <div id="flea_uploadStatus" style="font-size:11px; color:#3182ce; margin-top:4px;"></div>
       <img id="flea_imagePreview" src="" style="width:60px; height:60px; object-fit:contain; border:1px solid #eee; border-radius:6px; background:#f8fafc; display:none; margin-top:6px;">
 
-      <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:8px;">
-        <div>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:8px; min-width:0;">
+        <div style="min-width:0;">
           <label style="font-size:11px; font-weight:bold;">仕入れ日</label>
           <input type="date" id="flea_purchaseDate" style="width:100%; padding:8px; box-sizing:border-box;">
         </div>
-        <div>
+        <div style="min-width:0;">
           <label style="font-size:11px; font-weight:bold;">仕入先<span style="color:#e53e3e;">*</span></label>
           <select id="flea_supplier" style="width:100%; padding:8px; box-sizing:border-box; border:1px solid #ccc; border-radius:6px; outline:none;">
             <option value="">読込中...</option>
@@ -3236,8 +3236,13 @@
       const shipping = Number(document.getElementById('edit_actualShipping').value) || 0;
       const fee = Number(document.getElementById('edit_actualFee').value) || 0;
       const cost = buyPrice + expense;
-      const profit = sales - shipping - fee - cost;
       const el = document.getElementById('edit_profitDisplay');
+      if (sales <= 0) {
+        el.innerText = '未販売';
+        el.style.color = '#a0aec0';
+        return 0;
+      }
+      const profit = sales - shipping - fee - cost;
       el.innerText = `¥${profit.toLocaleString()}`;
       el.style.color = profit >= 0 ? '#07A27B' : '#e53e3e';
       return profit;
