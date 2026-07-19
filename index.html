@@ -81,17 +81,17 @@
     .home-month-btn { padding: 6px 16px; border: 1px solid #d5d9d9; border-radius: 20px; background: #ffffff; color: #0f1111; font-size: 12px; white-space: nowrap; cursor: pointer; }
     .home-month-btn.active { background: #f3fbfd; border-color: #008296; color: #008296; font-weight: bold; }
 
-    /* 💡 修正箇所①：スマホ用の縦並びレイアウト修正 */
-    .turnover-container { display: block; padding-bottom: 16px; }
-    .turnover-row-1 { display: flex; flex-direction: column; gap: 16px; width: 100%; align-items: center; }
+    /* 💡 修正箇所①：スマホ用のレイアウト修正（Keepa枠は上、仕入れ実績と円グラフは横並び） */
+    .turnover-container { display: flex; flex-direction: column; gap: 16px; padding-bottom: 16px; }
+    .turnover-row-1 { display: flex; flex-direction: row; gap: 12px; width: 100%; align-items: center; justify-content: space-between; }
     
     .keepa-token-panel { width: 100%; box-sizing: border-box; }
-    .metrics-list { display: flex; flex-direction: column; gap: 6px; justify-content: center; }
+    .metrics-list { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; justify-content: center; }
     .metric-item { display: flex; justify-content: space-between; font-size: 11px; color: #565959; border-bottom: 1px dashed #eee; padding-bottom: 2px; }
     .metric-value { font-weight: bold; color: #0f1111; }
     .metric-value.profit { color: #E47911; }
-    .chart-box { position: relative; display: flex; justify-content: center; align-items: center; }
-    .circular-chart { width: 120px; height: 120px; }
+    .chart-box { flex-shrink: 0; position: relative; display: flex; justify-content: center; align-items: center; }
+    .circular-chart { width: 100px; height: 100px; }
     .circle-bg { fill: none; stroke: #e6e6e6; stroke-width: 3.8; }
     .circle-base { fill: none; stroke: #008296; stroke-width: 3.8; stroke-linecap: round; transition: stroke-dasharray 1s ease-out; }
     .circle-over { fill: none; stroke: #E47911; stroke-width: 3.8; stroke-linecap: round; transition: stroke-dasharray 1s ease-out 0.5s; }
@@ -535,26 +535,11 @@
     <div class="content">
       
       <div style="margin-bottom:12px;">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
           <span style="font-size:12px; font-weight:bold; color:#4a5568;" id="ledgerCount">表示中: ---件</span>
           <button onclick="loadLedgerData()" style="flex-shrink:0; background:#1a365d; color:white; border:none; padding:8px 12px; border-radius:6px; font-size:11px; font-weight:bold; box-shadow:0 2px 4px rgba(0,0,0,0.1); white-space:nowrap;">
             <i class="fas fa-sync-alt"></i> 更新
           </button>
-        </div>
-
-        <div style="display:flex; gap:6px; flex-wrap:wrap;">
-          <button onclick="window.open('https://sellercentral.amazon.co.jp/order-reports-and-feeds/reports/allOrders#', '_blank'); window.open('https://sellercentral.amazon.co.jp/payments/reports-repository/ref=xx_rrepo_dnav_xx', '_blank');" 
-                  style="flex:1; min-width:120px; background:#4a5568; color:white; border:none; padding:8px 6px; border-radius:6px; font-size:11px; font-weight:bold; box-shadow:0 2px 4px rgba(0,0,0,0.1); cursor:pointer; display:flex; align-items:center; justify-content:center; gap:4px; white-space:nowrap;">
-            <i class="fas fa-external-link-alt"></i> レポート取得
-          </button>
-
-          <label id="mini-drop-zone" style="flex:1; min-width:120px; background:#f8fafc; border: 2px dashed #cbd5e0; color:#4a5568; padding:8px 6px; border-radius:6px; font-size:11px; font-weight:bold; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:4px; transition: all 0.2s; white-space:nowrap;" 
-                 ondragover="handleDragOverMini(event)" 
-                 ondragleave="handleDragLeaveMini(event)" 
-                 ondrop="handleDropMini(event)">
-            <i class="fas fa-file-upload"></i> レポート取込
-            <input type="file" style="display:none;" accept=".txt,.csv" onchange="processFile(event.target.files[0])">
-          </label>
         </div>
       </div> 
 
