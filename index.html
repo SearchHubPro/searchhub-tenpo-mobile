@@ -2589,7 +2589,7 @@
               const asin = String(row.asin || '').trim();
               const title = String(row.title || '').trim();
 
-              if (row.purchase_date && asin) {
+              if (row.purchase_date) {
                 const [y, m, d] = row.purchase_date.split('-');
                 const pKey = `${y}年${m}月`;
                 if (!purchaseSummary[pKey]) purchaseSummary[pKey] = { cost: 0, sales: 0, profit: 0, count: 0, dates: new Set(), items: [] };
