@@ -330,7 +330,7 @@
   </style>
 </head>
 <body>
-  <div id="authOverlay" style="display:flex; position:fixed; inset:0; z-index:20000; background:#f4f6f8; align-items:center; justify-content:center; padding:20px; box-sizing:border-box;">
+  <div id="authOverlay" style="display:none; position:fixed; inset:0; z-index:20000; background:#f4f6f8; align-items:center; justify-content:center; padding:20px; box-sizing:border-box;">
     <div style="width:100%; max-width:340px; background:#fff; border-radius:16px; padding:28px 24px; box-shadow:0 8px 24px rgba(0,0,0,0.1);">
       <div style="text-align:center; margin-bottom:20px;">
         <img src="https://i.ibb.co/1f3CYVjV/2026-06-04-111628.png" style="height:32px; object-fit:contain;">
@@ -354,7 +354,7 @@
   <div id="ptr-indicator">⬇️ 引っ張って更新...</div>
 
   <div id="loader">
-    <img class="splash-img" src="https://i.ibb.co/vK1Sdtp/Search.png" alt="Splash">
+    <img class="splash-img" src="https://i.ibb.co/R49z2pwV/Chat-GPT-Image-2026-5-31-20-50-12.png" alt="Splash">
     <div class="splash-text">SYSTEM LOADING...</div>
   </div>
 
@@ -1473,10 +1473,14 @@
         .maybeSingle();
 
       if (error) {
+        hideLoader();
+        document.getElementById('authOverlay').style.display = 'flex';
         setAuthStatus('⚠️ ライセンス確認でエラーが出たわ: ' + error.message, true);
         return;
       }
       if (!license) {
+        hideLoader();
+        document.getElementById('authOverlay').style.display = 'flex';
         setAuthStatus('⚠️ 有効なライセンスが見つかりません。ご契約状況を確認してください。', true);
         return;
       }
@@ -1493,6 +1497,10 @@
       const { data } = await sb.auth.getSession();
       if (data.session && data.session.user) {
         onAuthSuccess(data.session.user);
+      } else {
+        // 未ログインの場合だけ、ここでローディング画面からログイン画面に切り替える
+        hideLoader();
+        document.getElementById('authOverlay').style.display = 'flex';
       }
     })();
 
