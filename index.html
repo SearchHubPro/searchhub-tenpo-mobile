@@ -689,24 +689,8 @@
         <input type="text" id="expense-search-kw" placeholder="日付・種類・メモで検索..." oninput="renderExpenseTable();" style="flex:1;">
       </div>
 
-      <div style="font-size:11px; color:#a0aec0; text-align:right; margin-bottom:4px;">👉 表は横にスクロールできます</div>
-      <div style="-webkit-overflow-scrolling: touch; overflow: auto; max-height: 70vh; background: white; border: 1px solid #e2e8f0; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
-        <table id="expenseTable" style="width: 100%; border-collapse: separate; border-spacing: 0; font-size: 13px; text-align: left; white-space: nowrap;">
-          <thead>
-            <tr style="background: #edf2f7; position: sticky; top: 0; z-index: 10; box-shadow: 0 2px 0 0 #cbd5e0;">
-              <th style="padding: 12px 8px; width: 40px; text-align: center;">操作</th>
-              <th style="padding: 12px 16px; width: 100px;">発生月</th>
-              <th style="padding: 12px 16px; width: 120px;">日付</th>
-              <th style="padding: 12px 16px; width: 150px;">経費の種類</th>
-              <th style="padding: 12px 16px; width: 120px; text-align: right;">金額</th>
-              <th style="padding: 12px 16px; min-width: 250px;">摘要・メモ</th>
-              <th style="padding: 12px 16px; width: 130px;">登録元</th>
-            </tr>
-          </thead>
-          <tbody id="expenseResultBody">
-            <tr><td colspan="6" style="text-align:center; padding:40px; color:#a0aec0;">⌛ マネージャーシートから経費データを同期中...</td></tr>
-          </tbody>
-        </table>
+      <div id="expenseResultBody">
+        <div class="loading-spinner" style="padding:20px; text-align:center;">⌛ 経費データを同期中...</div>
       </div>
     </div>
   </div>
@@ -3282,31 +3266,37 @@
       countEl.innerText = `全 ${filtered.length} 件を表示中`;
 
       if (filtered.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:40px; color:#a0aec0;">該当する data はありません。</td></tr>';
+        tbody.innerHTML = '<div class="card" style="text-align:center; padding:30px 10px; color:#a0aec0;">該当するデータはありません。</div>';
         return;
       }
 
       let html = "";
       filtered.slice().reverse().forEach(row => {
         const amount = Number(row[3]) || 0;
-        const color = amount >= 5000 ? "#e53e3e" : "#333"; 
+        const color = amount >= 5000 ? "#e53e3e" : "#1a365d"; 
         const source = String(row[5] || "");
         const sheetRow = row[row.length - 1];
 
         let deleteBtn = "";
         if (!source.includes("Amazon自動")) {
-          deleteBtn = `<button onclick="deleteExpenseItem('${sheetRow}')" style="background:#e53e3e; color:white; border:none; padding:6px 10px; border-radius:6px; font-weight:bold; cursor:pointer; box-shadow:0 1px 2px rgba(0,0,0,0.1);"><i class="fas fa-trash-alt"></i></button>`;
+          deleteBtn = `<button onclick="deleteExpenseItem('${sheetRow}')" style="flex-shrink:0; background:#fff5f5; color:#e53e3e; border:1px solid #feb2b2; padding:6px 10px; border-radius:6px; font-weight:bold; cursor:pointer; font-size:12px;"><i class="fas fa-trash-alt"></i></button>`;
         }
         
-        html += `<tr style="border-bottom: 1px solid #f1f5f9; background:#fff;">
-          <td style="padding: 12px 8px; text-align:center;">${deleteBtn}</td>
-          <td style="padding: 12px 16px; font-weight:bold; color:#4a5568;">${row[0] || '-'}</td>
-          <td style="padding: 12px 16px;">${row[1] || '-'}</td>
-          <td style="padding: 12px 16px;"><span style="background:#edf2f7; padding:4px 8px; border-radius:6px; font-size:11px; font-weight:bold;">${row[2] || '-'}</span></td>
-          <td style="padding: 12px 16px; text-align:right; font-weight:900; color:${color}; font-size:15px;">¥${amount.toLocaleString()}</td>
-          <td style="padding: 12px 16px; white-space:normal; font-size:12px; color:#666;">${row[4] || '-'}</td>
-          <td style="padding: 12px 16px; font-size:11px; color:#a0aec0;">${row[5] || '-'}</td>
-        </tr>`;
+        html += `
+        <div class="card" style="padding:12px; margin-bottom:10px;">
+          <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:8px;">
+            <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+              <span style="font-size:11px; font-weight:bold; color:#718096;"><i class="far fa-calendar-alt"></i> ${row[0] || '-'} (${row[1] || '-'})</span>
+            </div>
+            ${deleteBtn}
+          </div>
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+            <span style="background:#edf2f7; color:#4a5568; padding:4px 10px; border-radius:6px; font-size:12px; font-weight:bold;">${row[2] || '-'}</span>
+            <span style="font-size:18px; font-weight:900; color:${color};">¥${amount.toLocaleString()}</span>
+          </div>
+          ${row[4] ? `<div style="font-size:12px; color:#666; padding-top:8px; border-top:1px dashed #e2e8f0; margin-bottom:4px;">📝 ${escapeHtml(row[4])}</div>` : ''}
+          <div style="font-size:10px; color:#a0aec0;">登録元: ${row[5] || '-'}</div>
+        </div>`;
       });
       tbody.innerHTML = html;
     }
