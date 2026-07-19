@@ -494,8 +494,7 @@
       <div class="dashboard-grid">
         <button class="dash-btn" onclick="openView('view-ledger')"><i class="fas fa-book" style="color:#2b6cb0;"></i>販売管理</button>
         <button class="dash-btn" onclick="openView('view-price')"><i class="fas fa-yen-sign" style="color:#1a365d;"></i>価格改定</button>
-        <button class="dash-btn" onclick="openView('view-monthly-purchase')"><i class="fas fa-box-open" style="color:#2f855a;"></i>月別仕入情報</button>
-        <button class="dash-btn" onclick="openView('view-monthly-sales')"><i class="fas fa-hand-holding-usd" style="color:#c53030;"></i>月別販売情報</button>
+        <button class="dash-btn" onclick="openView('view-monthly')"><i class="fas fa-calendar-alt" style="color:#2f855a;"></i>月別レポート</button>
         
                 <button class="dash-btn" onclick="openView('view-expense'); loadExpenseListData();"><i class="fas fa-file-invoice-dollar" style="color:#e53e3e;"></i>経費一覧</button>
 <button class="dash-btn" onclick="openView('view-manager-settings'); loadInfoSettingsView();"><i class="fas fa-table" style="color:#4a5568;"></i>情報設定</button>
@@ -535,30 +534,28 @@
   <div id="view-ledger" class="view">
     <div class="content">
       
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
-        
-        <div style="display:flex; gap:8px; align-items:center;">
+      <div style="margin-bottom:12px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+          <span style="font-size:12px; font-weight:bold; color:#4a5568;" id="ledgerCount">表示中: ---件</span>
+          <button onclick="loadLedgerData()" style="flex-shrink:0; background:#1a365d; color:white; border:none; padding:8px 12px; border-radius:6px; font-size:11px; font-weight:bold; box-shadow:0 2px 4px rgba(0,0,0,0.1); white-space:nowrap;">
+            <i class="fas fa-sync-alt"></i> 更新
+          </button>
+        </div>
+
+        <div style="display:flex; gap:6px; flex-wrap:wrap;">
           <button onclick="window.open('https://sellercentral.amazon.co.jp/order-reports-and-feeds/reports/allOrders#', '_blank'); window.open('https://sellercentral.amazon.co.jp/payments/reports-repository/ref=xx_rrepo_dnav_xx', '_blank');" 
-                  style="background:#4a5568; color:white; border:none; padding:6px 12px; border-radius:6px; font-size:11px; font-weight:bold; box-shadow:0 2px 4px rgba(0,0,0,0.1); cursor:pointer; display:flex; align-items:center;">
-            <i class="fas fa-external-link-alt" style="margin-right: 4px;"></i> レポート取得
+                  style="flex:1; min-width:120px; background:#4a5568; color:white; border:none; padding:8px 6px; border-radius:6px; font-size:11px; font-weight:bold; box-shadow:0 2px 4px rgba(0,0,0,0.1); cursor:pointer; display:flex; align-items:center; justify-content:center; gap:4px; white-space:nowrap;">
+            <i class="fas fa-external-link-alt"></i> レポート取得
           </button>
 
-          <label id="mini-drop-zone" style="background:#f8fafc; border: 2px dashed #cbd5e0; color:#4a5568; padding:4px 12px; border-radius:6px; font-size:11px; font-weight:bold; cursor:pointer; display:flex; align-items:center; transition: all 0.2s;" 
+          <label id="mini-drop-zone" style="flex:1; min-width:120px; background:#f8fafc; border: 2px dashed #cbd5e0; color:#4a5568; padding:8px 6px; border-radius:6px; font-size:11px; font-weight:bold; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:4px; transition: all 0.2s; white-space:nowrap;" 
                  ondragover="handleDragOverMini(event)" 
                  ondragleave="handleDragLeaveMini(event)" 
                  ondrop="handleDropMini(event)">
-            <i class="fas fa-file-upload" style="margin-right: 6px;"></i> レポートをドロップ
+            <i class="fas fa-file-upload"></i> レポート取込
             <input type="file" style="display:none;" accept=".txt,.csv" onchange="processFile(event.target.files[0])">
           </label>
         </div>
-
-        <div style="display:flex; gap:8px; align-items:center;">
-          <button onclick="loadLedgerData()" style="background:#1a365d; color:white; border:none; padding:6px 12px; border-radius:6px; font-size:11px; font-weight:bold; box-shadow:0 2px 4px rgba(0,0,0,0.1);">
-            <i class="fas fa-sync-alt"></i> 最新を取得
-          </button>
-          <span style="font-size:12px; font-weight:bold; color:#4a5568;" id="ledgerCount">表示中: ---件</span>
-        </div>
-        
       </div> 
 
       <div class="search-box" style="margin-bottom:16px;">
@@ -733,92 +730,54 @@
     </div>
   </div>
 
-  <div id="view-monthly-purchase" class="view">
-    <div class="content">
-      <div style="margin-bottom:12px; display:flex; justify-content:space-between; align-items:center;">
-        <select id="monthly-purchase-selector" onchange="renderMonthlyData()" style="padding:8px; border-radius:6px; border:1px solid #cbd5e0; font-weight:bold; font-size:14px; outline:none; background:#fff; color:#1a365d; min-width: 140px;">
-          <option>読込中...</option>
-        </select>
-        <button onclick="loadMonthlyData()" style="background:#1a365d; color:white; border:none; padding:6px 12px; border-radius:6px; font-size:11px; font-weight:bold;"><i class="fas fa-sync-alt"></i> 更新</button>
-      </div>
-      <div id="monthly-purchase-summary" style="margin-bottom:16px;"></div>
-      <input type="text" id="monthly-purchase-search-kw" class="search-bar-only" placeholder="ASIN・商品名・注文番号で検索..." oninput="monthlyCurrentPage=1; renderMonthlyList();">
-      <div style="font-size:11px; color:#a0aec0; text-align:right; margin-bottom:4px;">👉 表は横にスクロールできます</div>
-      <div style="-webkit-overflow-scrolling: touch; overflow: auto; max-height: 60vh; background: white; border: 1px solid #e2e8f0; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
-        <table style="width: 100%; border-collapse: separate; border-spacing: 0; font-size: 11px; text-align: left; white-space: nowrap; min-width: 800px;">
-          <thead>
-            <tr style="background: #edf2f7; position: sticky; top: 0; z-index: 10; box-shadow: 0 2px 0 0 #cbd5e0;">
-              <th style="padding: 10px 12px; width: 60px; text-align:center;">日付</th>
-              <th style="padding: 10px 12px; width: 100px;">ASIN</th>
-              <th style="padding: 10px 12px;">商品名</th>
-              <th style="padding: 10px 12px; text-align: right; width: 110px;">仕入原価</th>
-              <th style="padding: 10px 12px; text-align: right; width: 110px;">想定販売額</th>
-              <th style="padding: 10px 12px; text-align: right; width: 110px;">想定利益</th>
-            </tr>
-          </thead>
-          <tbody id="monthly-purchase-list"></tbody>
-        </table>
-      </div>
-      <div id="monthly-purchase-pagination" class="pagination" style="display:none;">
-        <button class="page-btn" id="monthly-purchase-btn-prev" onclick="monthlyCurrentPage--; renderMonthlyList();">◀ 戻る</button>
-        <span class="page-info" id="monthly-purchase-page-info">1 / 1</span>
-        <button class="page-btn" id="monthly-purchase-btn-next" onclick="monthlyCurrentPage++; renderMonthlyList();">次へ ▶</button>
+  <div id="view-monthly" class="view">
+    <div class="tabs-container">
+      <div class="tabs" id="monthly-tabs">
+        <button class="tab-btn active" id="btn-monthly-purchase" onclick="switchMonthlyTab('monthly-purchase', this)">📦 仕入情報</button>
+        <button class="tab-btn" id="btn-monthly-sales" onclick="switchMonthlyTab('monthly-sales', this)">💰 販売情報</button>
       </div>
     </div>
-  </div>
-
-  <div id="view-monthly-sales" class="view">
     <div class="content">
       <div style="margin-bottom:12px; display:flex; justify-content:space-between; align-items:center;">
-        <select id="monthly-sales-selector" onchange="renderMonthlyData()" style="padding:8px; border-radius:6px; border:1px solid #cbd5e0; font-weight:bold; font-size:14px; outline:none; background:#fff; color:#1a365d; min-width: 140px;">
+        <select id="monthly-selector" onchange="renderMonthlyData()" style="padding:8px; border-radius:6px; border:1px solid #cbd5e0; font-weight:bold; font-size:14px; outline:none; background:#fff; color:#1a365d; min-width: 140px;">
           <option>読込中...</option>
         </select>
-        <button onclick="loadMonthlyData()" style="background:#1a365d; color:white; border:none; padding:6px 12px; border-radius:6px; font-size:11px; font-weight:bold;"><i class="fas fa-sync-alt"></i> 更新</button>
+        <button onclick="loadMonthlyData()" style="background:#1a365d; color:white; border:none; padding:8px 12px; border-radius:6px; font-size:11px; font-weight:bold;"><i class="fas fa-sync-alt"></i> 更新</button>
       </div>
-      <div id="monthly-sales-summary" style="margin-bottom:16px;"></div>
-      <input type="text" id="monthly-sales-search-kw" class="search-bar-only" placeholder="ASIN・商品名・注文番号で検索..." oninput="monthlyCurrentPage=1; renderMonthlyList();">
-      <div style="font-size:11px; color:#a0aec0; text-align:right; margin-bottom:4px;">👉 表は横にスクロールできます</div>
-      <div style="-webkit-overflow-scrolling: touch; overflow: auto; max-height: 60vh; background: white; border: 1px solid #e2e8f0; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
-        <table style="width: 100%; border-collapse: separate; border-spacing: 0; font-size: 11px; text-align: left; white-space: nowrap; min-width: 900px;">
-          <thead>
-            <tr style="background: #edf2f7; position: sticky; top: 0; z-index: 10; box-shadow: 0 2px 0 0 #cbd5e0;">
-              <th style="padding: 10px 12px; width: 60px; text-align:center;">日付</th>
-              <th style="padding: 10px 12px; width: 100px;">ASIN</th>
-              <th style="padding: 10px 12px;">商品名 / 注文番号</th>
-              <th style="padding: 10px 12px; text-align: right; width: 110px;">仕入原価</th>
-              <th style="padding: 10px 12px; text-align: right; width: 110px;">総販売額</th>
-              <th style="padding: 10px 12px; text-align: right; width: 110px;">確定利益</th>
-            </tr>
-          </thead>
-          <tbody id="monthly-sales-list"></tbody>
-        </table>
-      </div>
-      <div id="monthly-sales-pagination" class="pagination" style="display:none;">
-        <button class="page-btn" id="monthly-sales-btn-prev" onclick="monthlyCurrentPage--; renderMonthlyList();">◀ 戻る</button>
-        <span class="page-info" id="monthly-sales-page-info">1 / 1</span>
-        <button class="page-btn" id="monthly-sales-btn-next" onclick="monthlyCurrentPage++; renderMonthlyList();">次へ ▶</button>
+
+      <div id="monthly-summary" style="margin-bottom:16px;"></div>
+
+      <input type="text" id="monthly-search-kw" class="search-bar-only" placeholder="ASIN・商品名・注文番号で検索..." oninput="monthlyCurrentPage=1; renderMonthlyList();">
+
+      <div id="monthly-purchase" class="tab-content active"><div id="monthly-purchase-list"></div></div>
+      <div id="monthly-sales" class="tab-content"><div id="monthly-sales-list"></div></div>
+
+      <div id="monthly-pagination" class="pagination" style="display:none;">
+        <button class="page-btn" id="monthly-btn-prev" onclick="monthlyCurrentPage--; renderMonthlyList();">◀ 戻る</button>
+        <span class="page-info" id="monthly-page-info">1 / 1</span>
+        <button class="page-btn" id="monthly-btn-next" onclick="monthlyCurrentPage++; renderMonthlyList();">次へ ▶</button>
       </div>
     </div>
   </div>
  <div id="view-expense" class="view">
     <div class="content">
-     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
-        <div style="display:flex; gap:12px; align-items:center;">
-          <h2 style="font-size:18px; margin:0; color:#1a365d;"><i class="fas fa-file-invoice-dollar"></i> 経費一覧</h2>
-          <span style="font-size:12px; font-weight:bold; color:#718096;" id="expenseTotalCount">読み込み中...</span>
+     <div style="margin-bottom:12px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+          <h2 style="font-size:16px; margin:0; color:#1a365d;"><i class="fas fa-file-invoice-dollar"></i> 経費一覧</h2>
+          <span style="font-size:11px; font-weight:bold; color:#718096;" id="expenseTotalCount">読み込み中...</span>
         </div>
         
-        <div style="display:flex; gap:10px; align-items:center;">
-          <select id="expense-month-selector" onchange="renderExpenseTable()" style="padding:10px; border-radius:8px; border:1px solid #cbd5e0; font-weight:bold; font-size:14px; outline:none; background:#fff; color:#1a365d; cursor:pointer;">
+        <div style="display:flex; gap:8px; align-items:center;">
+          <select id="expense-month-selector" onchange="renderExpenseTable()" style="flex:1; min-width:0; padding:9px 6px; border-radius:8px; border:1px solid #cbd5e0; font-weight:bold; font-size:13px; outline:none; background:#fff; color:#1a365d; cursor:pointer;">
             <option value="ALL">すべて表示</option>
           </select>
 
-          <button onclick="openExpenseModal()" style="background:#e53e3e; color:white; border:none; padding:10px 20px; border-radius:8px; font-weight:bold; font-size:14px; cursor:pointer; box-shadow:0 4px 6px rgba(229,62,62,0.2); display:flex; align-items:center; gap:6px;">
-            <i class="fas fa-plus-circle"></i> 経費を新規入力
+          <button onclick="openExpenseModal()" style="flex-shrink:0; background:#e53e3e; color:white; border:none; padding:9px 12px; border-radius:8px; font-weight:bold; font-size:12px; cursor:pointer; box-shadow:0 4px 6px rgba(229,62,62,0.2); display:flex; align-items:center; gap:4px; white-space:nowrap;">
+            <i class="fas fa-plus-circle"></i> 新規
           </button>
           
-          <button onclick="loadExpenseListData()" style="background:#1a365d; color:white; border:none; padding:10px 16px; border-radius:8px; font-weight:bold; font-size:14px; cursor:pointer;">
-            <i class="fas fa-sync-alt"></i> 更新
+          <button onclick="loadExpenseListData()" style="flex-shrink:0; background:#1a365d; color:white; border:none; padding:9px 12px; border-radius:8px; font-weight:bold; font-size:12px; cursor:pointer; white-space:nowrap;">
+            <i class="fas fa-sync-alt"></i>
           </button>
         </div>
       </div>
@@ -1512,8 +1471,7 @@
         else if(viewId === 'view-history') titleEl.innerText = '販売履歴リサーチ';
         else if(viewId === 'view-manager-menu') titleEl.innerText = 'Manager メニュー';
         else if(viewId === 'view-ledger') titleEl.innerText = '販売管理';
-        else if(viewId === 'view-monthly-purchase') titleEl.innerText = '月別仕入情報';
-        else if(viewId === 'view-monthly-sales') titleEl.innerText = '月別販売情報';
+        else if(viewId === 'view-monthly') titleEl.innerText = '月別レポート';
         else if(viewId === 'view-expense') titleEl.innerText = '経費一覧';
         else if(viewId === 'view-manager-settings') titleEl.innerText = '情報設定';
       }
@@ -1525,8 +1483,7 @@
       if (viewId === 'view-ledger') {
         if (globalLedgerData.length === 0) loadLedgerData(); else renderLedgerList();
       }
-      // 👇 どっちの月別画面を開いてもデータをロードする
-      if (viewId === 'view-monthly-purchase' || viewId === 'view-monthly-sales') {
+      if (viewId === 'view-monthly') {
         if (globalMonthlyData.purchase.length === 0 && globalMonthlyData.sales.length === 0) loadMonthlyData(); else renderMonthlyData();
       }
       if (viewId === 'view-amazon') {
@@ -1891,7 +1848,8 @@
           
           resView.innerHTML = '<div class="loading-spinner">⌛ Keepa APIと高速通信・解析中...</div>';
           
-          // 🚨 以前はここで履歴を消してた（'none'）のを消去！代わりにクラスを付与！
+          // 💡 スマホ版：検索したら履歴を隠して結果だけ見せる
+          document.getElementById('amazonHistoryArea').style.display = 'none';
           document.getElementById('amazon-container').classList.add('search-active');
           resView.style.display = 'block';
           
@@ -2426,9 +2384,7 @@
 
         async function loadMonthlyData() {
           if (!currentUser) return;
-          const isPurchase = (currentActiveView === 'view-monthly-purchase');
-          const prefix = isPurchase ? 'monthly-purchase' : 'monthly-sales';
-          document.getElementById(prefix + '-summary').innerHTML = '<div class="loading-spinner">⌛ 最新の月別データを集計中...</div>';
+          document.getElementById('monthly-summary').innerHTML = '<div class="loading-spinner">⌛ 最新の月別データを集計中...</div>';
 
           try {
             const [invRes, expRes] = await Promise.all([
@@ -2507,41 +2463,36 @@
             globalMonthlyData.purchase.forEach(d => allMonths.add(d.month)); globalMonthlyData.sales.forEach(d => allMonths.add(d.month));
             let monthArr = Array.from(allMonths).sort((a, b) => b.localeCompare(a));
             
-            const selPurchase = document.getElementById('monthly-purchase-selector');
-            const selSales = document.getElementById('monthly-sales-selector');
-            selPurchase.innerHTML = ""; selSales.innerHTML = "";
+            const sel = document.getElementById('monthly-selector');
+            sel.innerHTML = "";
             
             if(monthArr.length === 0) { 
-              selPurchase.innerHTML = "<option>データなし</option>"; 
-              selSales.innerHTML = "<option>データなし</option>"; 
-              document.getElementById('monthly-purchase-summary').innerHTML = ""; 
-              document.getElementById('monthly-sales-summary').innerHTML = ""; 
+              sel.innerHTML = "<option>データなし</option>"; 
+              document.getElementById('monthly-summary').innerHTML = ""; 
               return; 
             }
             
             monthArr.forEach(m => { 
-              selPurchase.appendChild(new Option(m, m)); 
-              selSales.appendChild(new Option(m, m)); 
+              sel.appendChild(new Option(m, m)); 
             });
             renderMonthlyData();
-          } catch (err) { document.getElementById(prefix + '-summary').innerHTML = '<div class="card" style="color:red; text-align:center;">通信エラーが発生しました。</div>'; }
+          } catch (err) { document.getElementById('monthly-summary').innerHTML = '<div class="card" style="color:red; text-align:center;">通信エラーが発生しました。</div>'; }
         }
 
         function renderMonthlyData() {
-          const isPurchase = (currentActiveView === 'view-monthly-purchase');
-          const prefix = isPurchase ? 'monthly-purchase' : 'monthly-sales';
-          const selMonth = document.getElementById(prefix + '-selector').value;
-          
+          const selMonth = document.getElementById('monthly-selector').value;
           if(!selMonth || selMonth === "データなし") return;
+          
+          const isPurchase = (currentMonthlyTab === 'monthly-purchase');
           
           const targetArr = isPurchase ? globalMonthlyData.purchase : globalMonthlyData.sales;
           const monthData = targetArr.find(d => d.month === selMonth);
-          const sumDiv = document.getElementById(prefix + '-summary');
+          const sumDiv = document.getElementById('monthly-summary');
           
           if (!monthData) {
             sumDiv.innerHTML = `<div class="card" style="text-align:center; color:#a0aec0; padding:20px;">${selMonth} のデータはありません。</div>`;
-            document.getElementById(prefix + '-list').innerHTML = "";
-            document.getElementById(prefix + '-pagination').style.display = 'none'; return;
+            document.getElementById(isPurchase ? 'monthly-purchase-list' : 'monthly-sales-list').innerHTML = "";
+            document.getElementById('monthly-pagination').style.display = 'none'; return;
           }
           
           let margin = monthData.sales > 0 ? Math.round((monthData.profit / monthData.sales) * 100) : 0;
@@ -2611,17 +2562,16 @@
         }
 
         function renderMonthlyList() {
-          const isPurchase = (currentActiveView === 'view-monthly-purchase');
-          const prefix = isPurchase ? 'monthly-purchase' : 'monthly-sales';
-          const selMonth = document.getElementById(prefix + '-selector').value;
+          const selMonth = document.getElementById('monthly-selector').value;
+          const isPurchase = (currentMonthlyTab === 'monthly-purchase');
           const targetArr = isPurchase ? globalMonthlyData.purchase : globalMonthlyData.sales;
           const monthData = targetArr.find(d => d.month === selMonth);
-          const listDiv = document.getElementById(prefix + '-list');
-          const pagiDiv = document.getElementById(prefix + '-pagination');
+          const listDiv = document.getElementById(isPurchase ? 'monthly-purchase-list' : 'monthly-sales-list');
+          const pagiDiv = document.getElementById('monthly-pagination');
           
           if (!monthData || !monthData.items || monthData.items.length === 0) { listDiv.innerHTML = ""; pagiDiv.style.display = 'none'; return; }
           
-          const kw = document.getElementById(prefix + '-search-kw').value.toLowerCase().trim();
+          const kw = document.getElementById('monthly-search-kw').value.toLowerCase().trim();
           let filtered = monthData.items;
           if (kw) {
              filtered = monthData.items.filter(item => (item.title && item.title.toLowerCase().includes(kw)) || (item.asin && item.asin.toLowerCase().includes(kw)) || (item.orderNum && item.orderNum.toLowerCase().includes(kw)));
@@ -2632,36 +2582,33 @@
           const start = (monthlyCurrentPage - 1) * ITEMS_PER_PAGE; const pageItems = filtered.slice(start, start + ITEMS_PER_PAGE);
           
           if (pageItems.length === 0) { 
-            listDiv.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:30px; color:#a0aec0; font-weight:bold;">見つかりませんでした。</td></tr>`; 
+            listDiv.innerHTML = '<div class="card" style="text-align:center; color:#a0aec0; padding:30px 10px;">見つかりませんでした。</div>'; 
             pagiDiv.style.display = 'none'; 
             return; 
           }
           
           let html = "";
           pageItems.forEach(item => {
-            let nameAndOrder = escapeHtml(item.title);
-            if (item.orderNum) {
-              nameAndOrder += `<div style="font-size:10px; color:#718096; margin-top:2px; font-family:monospace; font-weight:bold;">注文番号: ${escapeHtml(item.orderNum)}</div>`;
-            }
-            
-            const borderLeftColor = isPurchase ? '#3182ce' : '#e53e3e';
-            const profitColor = item.profit >= 0 ? '#07A27B' : '#e53e3e';
-            
+            let orderHtml = item.orderNum ? `<div style="font-size:10px; color:#a0aec0; margin-top:4px;">注文番号: ${escapeHtml(item.orderNum)}</div>` : "";
             html += `
-            <tr style="background:#fff; border-bottom:1px solid #f1f5f9;">
-              <td style="padding:10px 12px; text-align:center; border-left:4px solid ${borderLeftColor}; font-weight:bold; color:#4a5568;">${item.date}</td>
-              <td style="padding:10px 12px; font-family:monospace; font-weight:bold; color:#0369a1;">${escapeHtml(item.asin)}</td>
-              <td style="padding:10px 12px; white-space:normal; font-weight:bold; color:#2d3748; line-height:1.4;">${nameAndOrder}</td>
-              <td style="padding:10px 12px; text-align:right; font-weight:bold; color:#4a5568;">¥${Number(item.cost).toLocaleString()}</td>
-              <td style="padding:10px 12px; text-align:right; font-weight:bold; color:#1a365d;">¥${Number(item.sales).toLocaleString()}</td>
-              <td style="padding:10px 12px; text-align:right; font-weight:900; color:${profitColor}; font-size:13px;">¥${Number(item.profit).toLocaleString()}</td>
-            </tr>`;
+            <div class="card" style="padding:12px; margin-bottom:10px; border-left:4px solid ${isPurchase ? '#3182ce' : '#e53e3e'};">
+               <div style="display:flex; justify-content:space-between; margin-bottom:6px; align-items:center;">
+                  <span style="font-size:11px; font-weight:bold; color:#718096;"><i class="far fa-calendar-alt"></i> ${item.date}</span>
+                  <span style="background:#e0f2fe; color:#0369a1; padding:2px 6px; border-radius:4px; font-size:10px; font-weight:bold;">${escapeHtml(item.asin)}</span>
+               </div>
+               <div style="font-size:12px; font-weight:bold; color:#1a365d; margin-bottom:8px; line-height:1.4;">💎 ${escapeHtml(item.title)}</div>
+               ${orderHtml}
+               <div style="display:flex; justify-content:space-between; align-items:flex-end; margin-top:8px; padding-top:8px; border-top:1px dashed #e2e8f0;">
+                  <div style="font-size:11px; color:#718096; line-height:1.5;">仕入: <span style="color:#333; font-weight:bold;">¥${Number(item.cost).toLocaleString()}</span><br>販売: <span style="color:#333; font-weight:bold;">¥${Number(item.sales).toLocaleString()}</span></div>
+                  <div style="text-align:right;"><div style="font-size:10px; color:#718096;">利益</div><div style="font-size:16px; font-weight:900; color:${item.profit >= 0 ? '#07A27B' : '#e53e3e'};">¥${Number(item.profit).toLocaleString()}</div></div>
+               </div>
+            </div>`;
           });
           listDiv.innerHTML = html;
           
-          document.getElementById(prefix + '-page-info').innerText = `${monthlyCurrentPage} / ${totalPages} ページ`;
-          document.getElementById(prefix + '-btn-prev').disabled = (monthlyCurrentPage === 1);
-          document.getElementById(prefix + '-btn-next').disabled = (monthlyCurrentPage === totalPages);
+          document.getElementById('monthly-page-info').innerText = `${monthlyCurrentPage} / ${totalPages} ページ`;
+          document.getElementById('monthly-btn-prev').disabled = (monthlyCurrentPage === 1);
+          document.getElementById('monthly-btn-next').disabled = (monthlyCurrentPage === totalPages);
           pagiDiv.style.display = (totalPages > 1) ? 'flex' : 'none';
         }
 
@@ -3530,7 +3477,7 @@
           
           if (currentActiveView === 'view-expense') {
             loadExpenseListData();
-          } else if (currentActiveView === 'view-monthly-purchase' || currentActiveView === 'view-monthly-sales') {
+          } else if (currentActiveView === 'view-monthly') {
             loadMonthlyData();
           } else if (currentActiveView === 'view-home') {
             fetchDashboardData();
