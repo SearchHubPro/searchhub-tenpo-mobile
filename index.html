@@ -2473,56 +2473,6 @@
         }
 
         // 💡 低トークンモードで「この商品だけ詳細確認」を押した時、その1件だけKeepaに問い合わせる
-        async function refreshSingleItemPrice(id, uniqueId, btnEl) {
-          const keepaKey = AppStorage.get("sh_keepa", "");
-          const sellerId = AppStorage.get("sh_seller_id", "").toUpperCase();
-          if (!keepaKey) { openConfig(); return alert("⚙️設定からKeepa APIキーを登録してな！"); }
-
-          const item = globalInventoryData.find(i => i.id === id);
-          if (!item) return;
-
-          const originalText = btnEl.innerHTML;
-          btnEl.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
-          btnEl.disabled = true;
-
-          try {
-            const url = `https://api.keepa.com/product?key=${keepaKey}&domain=5&asin=${item.asin}&offers=100&stats=1&update=20`;
-            const kRes = await fetch(url);
-            const kJson = await kRes.json();
-            if (kJson.error) throw new Error(kJson.error.message);
-
-            const p = (kJson.products || [])[0];
-            let mine = 0, rivalLines = [];
-            if (p && p.offers && p.liveOffersOrder) {
-              p.liveOffersOrder.forEach(oid => {
-                const o = p.offers[oid];
-                if (!o || o.condition === 1 || !o.offerCSV) return;
-                const price = (o.offerCSV[o.offerCSV.length-2] > 0 ? o.offerCSV[o.offerCSV.length-2] : 0) + (o.offerCSV[o.offerCSV.length-1] > 0 ? o.offerCSV[o.offerCSV.length-1] : 0);
-                const condStr = {2:"ほぼ新品",3:"非常に良い",4:"良い",5:"可"}[o.condition] || "中古";
-                if (sellerId && String(o.sellerId).toUpperCase().includes(sellerId)) {
-                  mine = price;
-                  rivalLines.push(`【 ★ 自 分 ★ 】: ¥${price.toLocaleString()}`);
-                } else {
-                  rivalLines.push(`${condStr}: ¥${price.toLocaleString()}`);
-                }
-              });
-            }
-
-            item.fbaFee = (p && p.fbaFees && p.fbaFees.pickAndPackFee) ? p.fbaFees.pickAndPackFee : item.fbaFee;
-            item.feePercent = (p && p.referralFeePercentage > 0) ? p.referralFeePercentage : item.feePercent;
-            item.rivals = rivalLines.slice(0, 20);
-            if (mine > 0) item.price = mine;
-            item.notFetched = false;
-
-            savePriceCache(globalInventoryData);
-            renderInventoryList();
-          } catch(err) {
-            alert("❌ 取得に失敗しました: " + err.message);
-            btnEl.innerHTML = originalText;
-            btnEl.disabled = false;
-          }
-        }
-
         async function loadInventoryPrice() {
           const resDiv = document.getElementById('priceResult'); const countEl = document.getElementById('inventoryCount');
           if (!currentUser) return;
@@ -2614,18 +2564,57 @@
         }
 
         async function saveInventoryPrice(id, uniqueId, btnEl) {
-          const priceInput = document.getElementById('sim_price_' + uniqueId);
-          const newPrice = Number(priceInput.value) || 0;
           const originalText = btnEl.innerHTML;
           btnEl.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+          btnEl.disabled = true;
+
+          const target = globalInventoryData.find(item => item.id === id);
+          let needsRerender = false;
+
           try {
-            const { error } = await sb.from('inventories').update({ sell_price: newPrice }).eq('id', id);
-            if (error) throw error;
-            const target = globalInventoryData.find(item => item.id === id);
-            if (target) { target.price = newPrice; savePriceCache(globalInventoryData); }
-            showToast('✅ 価格を反映したで！');
-          } catch(e) { alert('❌ 反映失敗: ' + e.message); }
-          btnEl.innerHTML = originalText;
+            // 💡 低トークンモードでまだ詳細確認してなければ、Keepaで1件だけ詳細を取得する
+            //    （販売予定価格は仕入れ時の判断金額として保持するので、ここでは一切保存・変更しない）
+            if (target && target.lowTokenMode && target.notFetched) {
+              const keepaKey = AppStorage.get("sh_keepa", "");
+              const sellerId = AppStorage.get("sh_seller_id", "").toUpperCase();
+              if (!keepaKey) { openConfig(); throw new Error("Keepa APIキーを登録してな！"); }
+
+              const url = `https://api.keepa.com/product?key=${keepaKey}&domain=5&asin=${target.asin}&offers=100&stats=1&update=20`;
+              const kRes = await fetch(url);
+              const kJson = await kRes.json();
+              if (kJson.error) throw new Error(kJson.error.message);
+
+              const p = (kJson.products || [])[0];
+              let rivalLines = [];
+              if (p && p.offers && p.liveOffersOrder) {
+                p.liveOffersOrder.forEach(oid => {
+                  const o = p.offers[oid];
+                  if (!o || o.condition === 1 || !o.offerCSV) return;
+                  const price = (o.offerCSV[o.offerCSV.length-2] > 0 ? o.offerCSV[o.offerCSV.length-2] : 0) + (o.offerCSV[o.offerCSV.length-1] > 0 ? o.offerCSV[o.offerCSV.length-1] : 0);
+                  const condStr = {2:"ほぼ新品",3:"非常に良い",4:"良い",5:"可"}[o.condition] || "中古";
+                  if (sellerId && String(o.sellerId).toUpperCase().includes(sellerId)) {
+                    rivalLines.push(`【 ★ 自 分 ★ 】: ¥${price.toLocaleString()}`);
+                  } else {
+                    rivalLines.push(`${condStr}: ¥${price.toLocaleString()}`);
+                  }
+                });
+              }
+              target.fbaFee = (p && p.fbaFees && p.fbaFees.pickAndPackFee) ? p.fbaFees.pickAndPackFee : target.fbaFee;
+              target.feePercent = (p && p.referralFeePercentage > 0) ? p.referralFeePercentage : target.feePercent;
+              target.rivals = rivalLines.slice(0, 20);
+              target.notFetched = false;
+              needsRerender = true;
+              savePriceCache(globalInventoryData);
+              showToast('✅ 詳細を取得したで！');
+            }
+          } catch(e) { alert('❌ 取得失敗: ' + e.message); }
+
+          if (needsRerender) {
+            renderInventoryList();
+          } else {
+            btnEl.innerHTML = originalText;
+            btnEl.disabled = false;
+          }
         }
 
         function renderInventoryList() {
@@ -2655,7 +2644,7 @@
             let rivalsHtml = `<div style="font-size:10px; color:#a0aec0;">ライバル情報なし</div>`;
             if (item.lowTokenMode) {
               if (item.notFetched) {
-                rivalsHtml = `<button onclick="refreshSingleItemPrice('${item.id}', '${uniqueId}', this)" style="width:100%; background:#dd6b20; color:white; border:none; padding:8px; border-radius:6px; font-size:11px; font-weight:bold; cursor:pointer;"><i class="fas fa-search-dollar"></i> この商品だけ詳細確認</button>`;
+                rivalsHtml = `<div style="font-size:11px; color:#dd6b20; font-weight:bold; padding:8px; background:#fffaf0; border-radius:6px; text-align:center;">🪙 未確認（下の「反映」ボタンで取得されます）</div>`;
               } else if (item.rivals && item.rivals.length > 0) {
                 rivalsHtml = `<select style="width:100%; padding:8px; font-size:11px; font-weight:bold; color:#1a365d; border:1px solid #cbd5e0; border-radius:6px; background:#fff; outline:none;">`;
                 rivalsHtml += `<option value="" disabled selected>ライバル確認 (${item.rivals.length}件)</option>`;
@@ -2701,7 +2690,7 @@
                 <div style="display:flex; align-items:center; gap:4px; flex:1;">
                   <span style="font-size:13px; font-weight:bold; color:#333;">¥</span>
                   <input type="number" id="sim_price_${uniqueId}" value="${item.price > 0 ? item.price : ''}" placeholder="0" onfocus="this.placeholder=''" onblur="this.placeholder='0'" oninput="calcSimProfit('${uniqueId}', ${item.cost}, ${item.fbaFee}, ${item.feePercent || 10})" style="flex:1; min-width:0; text-align:right; padding:8px; border:1px solid #cbd5e0; border-radius:6px; font-size:14px; font-weight:900; color:#1a365d; outline:none;">
-                  <button onclick="saveInventoryPrice('${item.id}', '${uniqueId}', this)" style="flex-shrink:0; background:#3182ce; color:white; border:none; padding:8px 10px; border-radius:6px; font-size:11px; font-weight:bold; cursor:pointer;">反映</button>
+                  ${(item.lowTokenMode && item.notFetched) ? `<button onclick="saveInventoryPrice('${item.id}', '${uniqueId}', this)" style="flex-shrink:0; background:#dd6b20; color:white; border:none; padding:8px 10px; border-radius:6px; font-size:11px; font-weight:bold; cursor:pointer;">反映</button>` : ''}
                 </div>
               </div>
 
@@ -2719,7 +2708,15 @@
           });
           resDiv.innerHTML = html;
           
-          pageItems.forEach(function(item, index) { calcSimProfit("inv_" + start + "_" + index, item.cost, item.fbaFee, item.feePercent || 10); });
+          pageItems.forEach(function(item, index) {
+            const uid = "inv_" + start + "_" + index;
+            if (item.lowTokenMode && item.notFetched) {
+              const profitSpan = document.getElementById('sim_profit_' + uid);
+              if (profitSpan) { profitSpan.style.color = '#a0aec0'; profitSpan.innerText = '未確認'; }
+            } else {
+              calcSimProfit(uid, item.cost, item.fbaFee, item.feePercent || 10);
+            }
+          });
           
           document.getElementById('price-page-info').innerText = `${invCurrentPage} / ${totalPages} ページ`;
           document.getElementById('price-btn-prev').disabled = (invCurrentPage === 1);
