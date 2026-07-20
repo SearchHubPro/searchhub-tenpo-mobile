@@ -750,7 +750,7 @@
 
       <div style="display:flex; align-items:center; justify-content:space-between; margin-top:10px; padding:10px; background:#f7fafc; border-radius:8px;">
         <div>
-          <div style="font-size:13px; font-weight:bold; color:#1a365d;">🪙 低トークンモード（19€/60トークンプラン向け）</div>
+          <div style="font-size:13px; font-weight:bold; color:#1a365d;">🪙 低トークンモード（29€/60トークンプラン向け）</div>
           <div style="font-size:11px; color:#718096; margin-top:2px;">価格改定でライバル一覧を取得せず、Keepaのトークン消費を抑えます</div>
         </div>
         <label style="position:relative; display:inline-block; width:44px; height:24px; flex-shrink:0; margin-left:10px;">
@@ -2399,6 +2399,12 @@
         }
 
         function confirmAndLoadInventoryPrice() {
+          const isLowTokenMode = AppStorage.get("sh_low_token_mode", "false") === "true";
+          // 💡 低トークンモードなら、Keepaへの負荷が最小限（開いた時点では0）なので確認ポップアップは省略
+          if (isLowTokenMode) {
+            loadInventoryPriceLowToken();
+            return;
+          }
           const ok = confirm(
             "⚠️ Keepaのプランによっては、まとめて検索するとトークン（APIの利用枠）が足りなくなり、エラーで途中停止することがあります。\n\n" +
             "特にKeepaの契約プランのトークン数が少ない場合はご注意ください。\n\n" +
@@ -2415,6 +2421,105 @@
             </div>`;
             countEl.innerText = "未実行";
             document.getElementById('price-pagination').style.display = 'none';
+          }
+        }
+
+        // 💡 低トークンモード専用：Keepaには一切問い合わせず、DBに保存済みの見積り値だけで一覧を作る
+        async function loadInventoryPriceLowToken() {
+          const resDiv = document.getElementById('priceResult'); const countEl = document.getElementById('inventoryCount');
+          if (!currentUser) return;
+
+          resDiv.innerHTML = '<div class="loading-spinner">⌛ 出品中の在庫リストを抽出中...</div>'; countEl.innerText = "同期中...";
+
+          try {
+            const { data, error } = await sb.from('inventories').select('*').eq('is_listed', true).is('sale_date', null);
+            if (error) throw error;
+            if (!data || data.length === 0) {
+              resDiv.innerHTML = '<div class="card" style="text-align:center; color:#a0aec0; padding:30px 10px;">現在、出品中の商品は見つかりませんでした。</div>';
+              countEl.innerText = "在庫: 0件"; globalInventoryData = []; document.getElementById('price-pagination').style.display = 'none'; return;
+            }
+
+            const results = data.map(orig => {
+              let daysText = "";
+              if (orig.sku) {
+                const parts = String(orig.sku).split("-");
+                if (parts.length >= 2 && /^\d{8}$/.test(parts[1])) {
+                  const dStr = parts[1];
+                  const purchaseDate = new Date(dStr.substring(0,4), dStr.substring(4,6)-1, dStr.substring(6,8));
+                  const diffDays = Math.floor((new Date() - purchaseDate) / 86400000);
+                  if (diffDays >= 30) daysText = "30日以上";
+                  else if (diffDays >= 21) daysText = "21日以上";
+                  else if (diffDays >= 14) daysText = "14日以上";
+                }
+              }
+              return {
+                id: orig.id, asin: orig.asin, title: orig.title, sku: orig.sku, condition: orig.condition,
+                cost: (Number(orig.buy_price)||0) + (Number(orig.shipping_cost)||0),
+                price: orig.sell_price || 0,
+                fbaFee: orig.fba_fee > 0 ? orig.fba_fee : 514,
+                feePercent: orig.referral_fee > 0 ? orig.referral_fee : 10,
+                rivals: [], img: orig.image_url || "", daysText: daysText,
+                lowTokenMode: true, notFetched: true
+              };
+            });
+
+            globalInventoryData = results; invCurrentPage = 1; renderInventoryList();
+            savePriceCache(results);
+            countEl.innerText = `現在の商品: ${results.length}件（🪙 低トークンモード）`;
+          } catch(err) {
+            resDiv.innerHTML = '<div class="card" style="text-align:center; color:#e53e3e; font-weight:bold;">❌ 取得に失敗しました: ' + err.message + '</div>';
+            countEl.innerText = "通信失敗";
+          }
+        }
+
+        // 💡 低トークンモードで「この商品だけ詳細確認」を押した時、その1件だけKeepaに問い合わせる
+        async function refreshSingleItemPrice(id, uniqueId, btnEl) {
+          const keepaKey = AppStorage.get("sh_keepa", "");
+          const sellerId = AppStorage.get("sh_seller_id", "").toUpperCase();
+          if (!keepaKey) { openConfig(); return alert("⚙️設定からKeepa APIキーを登録してな！"); }
+
+          const item = globalInventoryData.find(i => i.id === id);
+          if (!item) return;
+
+          const originalText = btnEl.innerHTML;
+          btnEl.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+          btnEl.disabled = true;
+
+          try {
+            const url = `https://api.keepa.com/product?key=${keepaKey}&domain=5&asin=${item.asin}&offers=100&stats=1&update=20`;
+            const kRes = await fetch(url);
+            const kJson = await kRes.json();
+            if (kJson.error) throw new Error(kJson.error.message);
+
+            const p = (kJson.products || [])[0];
+            let mine = 0, rivalLines = [];
+            if (p && p.offers && p.liveOffersOrder) {
+              p.liveOffersOrder.forEach(oid => {
+                const o = p.offers[oid];
+                if (!o || o.condition === 1 || !o.offerCSV) return;
+                const price = (o.offerCSV[o.offerCSV.length-2] > 0 ? o.offerCSV[o.offerCSV.length-2] : 0) + (o.offerCSV[o.offerCSV.length-1] > 0 ? o.offerCSV[o.offerCSV.length-1] : 0);
+                const condStr = {2:"ほぼ新品",3:"非常に良い",4:"良い",5:"可"}[o.condition] || "中古";
+                if (sellerId && String(o.sellerId).toUpperCase().includes(sellerId)) {
+                  mine = price;
+                  rivalLines.push(`【 ★ 自 分 ★ 】: ¥${price.toLocaleString()}`);
+                } else {
+                  rivalLines.push(`${condStr}: ¥${price.toLocaleString()}`);
+                }
+              });
+            }
+
+            item.fbaFee = (p && p.fbaFees && p.fbaFees.pickAndPackFee) ? p.fbaFees.pickAndPackFee : item.fbaFee;
+            item.feePercent = (p && p.referralFeePercentage > 0) ? p.referralFeePercentage : item.feePercent;
+            item.rivals = rivalLines.slice(0, 20);
+            if (mine > 0) item.price = mine;
+            item.notFetched = false;
+
+            savePriceCache(globalInventoryData);
+            renderInventoryList();
+          } catch(err) {
+            alert("❌ 取得に失敗しました: " + err.message);
+            btnEl.innerHTML = originalText;
+            btnEl.disabled = false;
           }
         }
 
@@ -2549,7 +2654,16 @@
 
             let rivalsHtml = `<div style="font-size:10px; color:#a0aec0;">ライバル情報なし</div>`;
             if (item.lowTokenMode) {
-              rivalsHtml = `<div style="font-size:11px; color:#dd6b20; font-weight:bold; padding:8px; background:#fffaf0; border-radius:6px; text-align:center;">🪙 低トークンモード中<br>下の「Amazon」ボタンで手動確認してな</div>`;
+              if (item.notFetched) {
+                rivalsHtml = `<button onclick="refreshSingleItemPrice('${item.id}', '${uniqueId}', this)" style="width:100%; background:#dd6b20; color:white; border:none; padding:8px; border-radius:6px; font-size:11px; font-weight:bold; cursor:pointer;"><i class="fas fa-search-dollar"></i> この商品だけ詳細確認</button>`;
+              } else if (item.rivals && item.rivals.length > 0) {
+                rivalsHtml = `<select style="width:100%; padding:8px; font-size:11px; font-weight:bold; color:#1a365d; border:1px solid #cbd5e0; border-radius:6px; background:#fff; outline:none;">`;
+                rivalsHtml += `<option value="" disabled selected>ライバル確認 (${item.rivals.length}件)</option>`;
+                item.rivals.forEach(r => { rivalsHtml += `<option>${escapeHtml(r)}</option>`; });
+                rivalsHtml += `</select>`;
+              } else {
+                rivalsHtml = `<div style="font-size:10px; color:#a0aec0;">ライバル出品なし</div>`;
+              }
             } else if (item.rivals && item.rivals.length > 0) {
               rivalsHtml = `<select style="width:100%; padding:8px; font-size:11px; font-weight:bold; color:#1a365d; border:1px solid #cbd5e0; border-radius:6px; background:#fff; outline:none;">`;
               rivalsHtml += `<option value="" disabled selected>ライバル確認 (${item.rivals.length}件)</option>`;
