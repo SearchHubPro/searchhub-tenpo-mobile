@@ -373,7 +373,6 @@
       </div>
     </div>
     <div class="header-right">
-      <button class="header-btn" onclick="authSignOut()" title="ログアウト"><i class="fas fa-sign-out-alt"></i></button>
     </div>
   </div>
 </div>
@@ -767,6 +766,10 @@
       
       <label>AmazonセラーID</label>
       <input type="text" id="cfgSellerId" placeholder="A1234567890XYZなど">
+
+      <div style="text-align:center; margin-top:14px;">
+        <a href="javascript:void(0)" onclick="authSignOut()" style="font-size:12px; color:#a0aec0; text-decoration:underline; cursor:pointer;"><i class="fas fa-sign-out-alt"></i> ログアウト</a>
+      </div>
       
       <div class="modal-actions">
         <button style="background:#e2e8f0; color:#4a5568;" onclick="closeConfig()">閉じる</button>
@@ -2610,7 +2613,9 @@
           } catch(e) { alert('❌ 取得失敗: ' + e.message); }
 
           if (needsRerender) {
+            const scrollY = window.scrollY; // 💡 再描画で先頭にスクロールされてしまうのを防ぐため位置を覚えておく
             renderInventoryList();
+            window.scrollTo(0, scrollY);
           } else {
             btnEl.innerHTML = originalText;
             btnEl.disabled = false;
