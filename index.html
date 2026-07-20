@@ -3156,28 +3156,15 @@
         const { data: orig, error: fetchErr } = await sb.from('inventories').select('*').eq('id', id).single();
         if (fetchErr) throw fetchErr;
 
-        const { data: maxRows } = await sb.from('inventories').select('no').not('no', 'is', null).order('no', { ascending: false }).limit(1);
-        const nextNo = (maxRows && maxRows.length > 0 && maxRows[0].no) ? maxRows[0].no + 1 : 1;
-
-        // 元のSKU(No-仕入日-ASIN)から日付部分だけ引き継いで、Noを採番し直す
-        let datePart = '';
-        if (orig.sku) {
-          const parts = String(orig.sku).split('-');
-          if (parts.length >= 2) datePart = parts[1];
-        }
-        if (!datePart) {
-          const now = new Date();
-          datePart = `${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}`;
-        }
-        const newSku = `${nextNo}-${datePart}-${orig.asin}`;
-
         const newRow = {
           asin: orig.asin, title: orig.title, model: orig.model, jan: orig.jan,
           supplier: orig.supplier, purchase_url: orig.purchase_url, purchase_id: orig.purchase_id,
           condition: orig.condition, description: orig.description, image_url: orig.image_url,
-          buy_price: orig.buy_price, shipping_cost: orig.shipping_cost, sell_price: orig.sell_price,
+          // 💡 仕入値・送料経費は0円にする。同じ物理在庫の再出品なので、
+          //    その仕入コストはすでに元の行(返金)で損失として計上済み。ここでまた引くと二重計上になる。
+          buy_price: 0, shipping_cost: 0, sell_price: orig.sell_price,
           fba_fee: orig.fba_fee, referral_fee: orig.referral_fee,
-          is_listed: false, no: nextNo, sku: newSku,
+          is_listed: false, no: orig.no, sku: orig.sku,
           user_id: currentUser.id
         };
         const { error: insertErr } = await sb.from('inventories').insert(newRow);
