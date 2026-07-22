@@ -595,7 +595,7 @@
         <div id="amazonHistoryArea" style="display:flex; flex-direction:column; gap:10px; margin-bottom:12px;"></div>
         
         <div id="amazonResult">
-          <div class="card" style="text-align:center; color:#a0aec0; padding:20px; font-size:12px;">ASINやキーワードを入力して解析ボタンを押してな！</div>
+          <div class="card" style="text-align:center; color:#a0aec0; padding:20px; font-size:12px;">ASINやキーワードを入力して解析ボタンを押してください！</div>
         </div>
       </div>
       
@@ -611,7 +611,7 @@
         <button onclick="searchHistory()" style="background:#4285f4;"><i class="fas fa-search"></i> 検索</button>
       </div>
       <div id="historyResult">
-        <div class="card" style="text-align:center; color:#a0aec0; padding:30px 10px; font-size:12px;">ASINを入力して検索ボタンを押してな！</div>
+        <div class="card" style="text-align:center; color:#a0aec0; padding:30px 10px; font-size:12px;">ASINを入力して検索ボタンを押してください！</div>
       </div>
     </div>
   </div>
@@ -726,7 +726,7 @@
         <option value="その他">✍️ その他 (手入力)</option>
       </select>
       
-      <input type="text" id="expTypeCustom" placeholder="経費の種類を入力してな" style="display:none; width:100%; padding:10px; margin-top:8px; border:1px solid #e53e3e; border-radius:6px; font-size:14px; box-sizing:border-box; outline:none;">
+      <input type="text" id="expTypeCustom" placeholder="経費の種類を入力してください" style="display:none; width:100%; padding:10px; margin-top:8px; border:1px solid #e53e3e; border-radius:6px; font-size:14px; box-sizing:border-box; outline:none;">
 
       <label style="font-size:11px; font-weight:bold; color:#4a5568; display:block; margin-top:12px;">金額 (必須)</label>
       <input type="number" id="expAmount" placeholder="例: 1500" style="width:100%; padding:10px; margin-top:4px; border:1px solid #ccc; border-radius:6px; font-size:18px; font-weight:bold; color:#e53e3e; box-sizing:border-box;">
@@ -1543,7 +1543,7 @@
     async function authSignIn() {
       const email = normalizeEmail(document.getElementById('authEmail').value);
       const password = document.getElementById('authPassword').value;
-      if (!email || !password) { setAuthStatus('❌ メールアドレスとパスワードを入力してな', true); return; }
+      if (!email || !password) { setAuthStatus('❌ メールアドレスとパスワードを入力してください', true); return; }
       setAuthStatus('⌛ ログイン中...', false);
       const { data, error } = await sb.auth.signInWithPassword({ email, password });
       if (error) { setAuthStatus('❌ ' + error.message, true); return; }
@@ -1553,14 +1553,14 @@
     async function authSignUp() {
       const email = normalizeEmail(document.getElementById('authEmail').value);
       const password = document.getElementById('authPassword').value;
-      if (!email || password.length < 6) { setAuthStatus('❌ メールアドレスとパスワード(6文字以上)を入力してな', true); return; }
+      if (!email || password.length < 6) { setAuthStatus('❌ メールアドレスとパスワード(6文字以上)を入力してください', true); return; }
       setAuthStatus('⌛ 登録中...', false);
       const { data, error } = await sb.auth.signUp({ email, password });
       if (error) { setAuthStatus('❌ ' + error.message, true); return; }
       if (data.session) {
         onAuthSuccess(data.user);
       } else {
-        setAuthStatus('✅ 登録完了！確認メールが届いていればリンクをタップしてからログインしてな', false);
+        setAuthStatus('✅ 登録完了！確認メールが届いていればリンクをタップしてからログインしてください', false);
       }
     }
 
@@ -1569,7 +1569,7 @@
       if (!email) { setAuthStatus('❌ パスワード再設定にはメールアドレスの入力が必要や', true); return; }
       const { error } = await sb.auth.resetPasswordForEmail(email);
       if (error) { setAuthStatus('❌ ' + error.message, true); return; }
-      setAuthStatus('✅ 再設定用のメールを送ったで、確認してな', false);
+      setAuthStatus('✅ 再設定用のメールを送信しました、ご確認ください', false);
     }
 
     async function authSignOut() {
@@ -1601,7 +1601,7 @@
       if (error) {
         hideLoader();
         document.getElementById('authOverlay').style.display = 'flex';
-        setAuthStatus('⚠️ ライセンス確認でエラーが出たわ: ' + error.message, true);
+        setAuthStatus('⚠️ ライセンス確認でエラーが発生しました: ' + error.message, true);
         return;
       }
       if (!license) {
@@ -1874,8 +1874,8 @@
           const kw = document.getElementById("amazonKw").value.trim(); 
           const resView = document.getElementById("amazonResult"); 
           const apiKey = AppStorage.get("sh_keepa", "");
-          if (!kw) return alert("キーワードかASINを入力してな！"); 
-          if (!apiKey) { openConfig(); return alert("⚙️設定からKeepaAPIキーを入力してな！"); }
+          if (!kw) return alert("キーワードかASINを入力してください！"); 
+          if (!apiKey) { openConfig(); return alert("⚙️設定からKeepaAPIキーを入力してください！"); }
           
           resView.innerHTML = '<div class="loading-spinner">⌛ Keepa APIと高速通信・解析中...</div>';
           
@@ -2199,10 +2199,10 @@
           const buyPrice = Number(document.getElementById('flea_buyPrice').value);
           const sellPrice = Number(document.getElementById('flea_sellPrice').value);
 
-          if (!title) return alert("⚠️ 商品名を入力してな！");
-          if (!supplier) return alert("⚠️ 仕入先を選択してな！");
-          if (!buyPrice) return alert("⚠️ 仕入値を入力してな！");
-          if (!sellPrice) return alert("⚠️ 販売予定価格を入力してな！");
+          if (!title) return alert("⚠️ 商品名を入力してください！");
+          if (!supplier) return alert("⚠️ 仕入先を選択してください！");
+          if (!buyPrice) return alert("⚠️ 仕入値を入力してください！");
+          if (!sellPrice) return alert("⚠️ 販売予定価格を入力してください！");
 
           const btn = document.getElementById('fleaRegisterBtn');
           const originalText = btn.innerText;
@@ -2490,7 +2490,7 @@
           if (!currentUser) return;
           const keepaKey = AppStorage.get("sh_keepa", "");
           const sellerId = AppStorage.get("sh_seller_id", "").toUpperCase();
-          if (!keepaKey || !sellerId) { openConfig(); resDiv.innerHTML = '<div class="card" style="text-align:center; padding:20px; color:#e53e3e; font-weight:bold;">⚙️設定からKeepa APIキーとAmazonセラーIDを登録してな！</div>'; return; }
+          if (!keepaKey || !sellerId) { openConfig(); resDiv.innerHTML = '<div class="card" style="text-align:center; padding:20px; color:#e53e3e; font-weight:bold;">⚙️設定からKeepa APIキーとAmazonセラーIDを登録してください！</div>'; return; }
 
           const isLowTokenMode = AppStorage.get("sh_low_token_mode", "false") === "true";
 
@@ -2589,7 +2589,7 @@
             if (target && target.lowTokenMode && target.notFetched) {
               const keepaKey = AppStorage.get("sh_keepa", "");
               const sellerId = AppStorage.get("sh_seller_id", "").toUpperCase();
-              if (!keepaKey) { openConfig(); throw new Error("Keepa APIキーを登録してな！"); }
+              if (!keepaKey) { openConfig(); throw new Error("Keepa APIキーを登録してください！"); }
 
               const url = `https://api.keepa.com/product?key=${keepaKey}&domain=5&asin=${target.asin}&offers=100&stats=1&update=20`;
               const kRes = await fetch(url);
@@ -2617,7 +2617,7 @@
               target.notFetched = false;
               needsRerender = true;
               savePriceCache(globalInventoryData);
-              showToast('✅ 詳細を取得したで！');
+              showToast('✅ 詳細を取得しました！');
             }
           } catch(e) { alert('❌ 取得失敗: ' + e.message); }
 
@@ -3252,7 +3252,7 @@
     function processFile(file) {
       // 🚧 Amazonレポートの自動取込（CSV/TXT解析→帳簿・経費への自動反映）は
       // Supabase移行の別フェーズで対応予定。誤動作防止のため一旦ここで止める。
-      alert('⚠️ Amazonレポートの自動取込機能は現在準備中です。\n手動で「編集」から登録・修正してな！');
+      alert('⚠️ Amazonレポートの自動取込機能は現在準備中です。\n手動で「編集」から登録・修正してください！');
     }
 
     function handleDragOverMini(e) {
@@ -3283,7 +3283,7 @@
       const win2 = window.open('https://sellercentral.amazon.co.jp/payments/reports-repository/ref=xx_rrepo_dnav_xx', '_blank');
       
       if (!win1 || !win2) {
-        alert("⚠️ ブラウザのポップアップブロックが作動しました！\n\n画面上部の「URLバー（アドレスバー）」の右端に出ている【✖️マーク】をクリックして、「ポップアップを常に許可する」に設定してからもう一度押してな！");
+        alert("⚠️ ブラウザのポップアップブロックが作動しました！\n\n画面上部の「URLバー（アドレスバー）」の右端に出ている【✖️マーク】をクリックして、「ポップアップを常に許可する」に設定してからもう一度押してください！");
       }
     }
 
@@ -3328,7 +3328,7 @@
         const { error: insertErr } = await sb.from('inventories').insert(newRow);
         if (insertErr) throw insertErr;
 
-        alert("✅ 再出品データ（納品待ち）を帳簿に追加したで！");
+        alert("✅ 再出品データ（納品待ち）を帳簿に追加しました！");
         loadLedgerData();
       } catch(e) {
         alert("❌ 再出品失敗: " + e.message);
@@ -3339,7 +3339,7 @@
     async function openLedgerEdit(id) {
       const item = globalLedgerData.find(i => String(i.id) === String(id));
       if (!item) {
-        alert("⚠️ 編集するデータが見つかりません\n一度「最新を取得」ボタンを押してみてな！");
+        alert("⚠️ 編集するデータが見つかりません\n一度「最新を取得」ボタンを押してみてください！");
         return;
       }
       
@@ -3701,7 +3701,7 @@
       try {
         const { error } = await sb.from('inventories').update({ is_listed: true }).in('sku', targetSkus);
         if (error) throw error;
-        alert("✅ 選択した商品を「出品中」に変更したで！");
+        alert("✅ 選択した商品を「出品中」に変更しました！");
         loadBulkRegisterData();
       } catch(err) {
         alert("❌ エラー: " + err.message);
@@ -3874,13 +3874,13 @@
     async function submitExpense() {
       const month = document.getElementById('expMonth').value.trim();
       const amount = document.getElementById('expAmount').value.trim();
-      if (!month || !amount) return alert("発生月と金額は絶対入れてな！");
+      if (!month || !amount) return alert("発生月と金額は必ず入力してください！");
 
       const selectVal = document.getElementById('expTypeSelect').value;
       let type = selectVal;
       if (selectVal === "その他") {
         type = document.getElementById('expTypeCustom').value.trim();
-        if (!type) return alert("経費の種類を入力してな！");
+        if (!type) return alert("経費の種類を入力してください！");
       }
 
       const date = document.getElementById('expDate').value.trim();
@@ -4077,7 +4077,7 @@
       try {
         const { error } = await sb.from('profiles').update({ settings: newSettings }).eq('id', currentUser.id);
         if (error) throw error;
-        alert("🎯 設定を保存したで！！");
+        alert("🎯 設定を保存しました！");
         window.globalSupplierData = suppliers;
         window.globalChannelData = channels;
         openView('view-manager-menu');
