@@ -3094,6 +3094,14 @@
           };
         }
 
+        // ==========================================
+        // 💡 ステータスに応じて「その月の帳簿」判定に使う日付を切り替える
+        // 納品待ち・出品中 → 仕入日基準／販売済・返金済み・補填済み → 販売日基準
+        function getRelevantDateForItem(item) {
+          const isSold = (item.status === '販売済' || item.status === '返金済み' || item.status === '補填済み');
+          return isSold ? item.sellDate : item.buyDate;
+        }
+
         function openCsvExportModal() {
           if (globalLedgerData.length === 0) {
             alert("⚠️ 先に帳簿データを読み込んでください！（最新を取得ボタンを押してから開いてください）");
