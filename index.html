@@ -550,6 +550,18 @@
             </button>
           </div>
         </div>
+        <div style="display:flex; gap:6px; margin-top:8px; flex-wrap:wrap;">
+          <button onclick="window.open('https://sellercentral.amazon.co.jp/order-reports-and-feeds/reports/allOrders#', '_blank')" style="flex:1; min-width:0; background:#4a5568; color:white; border:none; padding:8px 6px; border-radius:6px; font-size:10px; font-weight:bold; white-space:nowrap;">
+            <i class="fas fa-external-link-alt"></i> 注文レポート
+          </button>
+          <button onclick="window.open('https://sellercentral.amazon.co.jp/payments/reports-repository/ref=xx_rrepo_dnav_xx', '_blank')" style="flex:1; min-width:0; background:#4a5568; color:white; border:none; padding:8px 6px; border-radius:6px; font-size:10px; font-weight:bold; white-space:nowrap;">
+            <i class="fas fa-external-link-alt"></i> ペイメント
+          </button>
+          <label id="mini-drop-zone" style="flex:1; min-width:0; background:#f8fafc; border:2px dashed #cbd5e0; color:#4a5568; padding:6px; border-radius:6px; font-size:10px; font-weight:bold; text-align:center; display:flex; align-items:center; justify-content:center; white-space:nowrap;">
+            <i class="fas fa-file-upload"></i>&nbsp;レポート選択
+            <input type="file" style="display:none;" accept=".txt,.csv" multiple onchange="processFiles(event.target.files)">
+          </label>
+        </div>
       </div> 
 
       <div class="search-box" style="margin-bottom:16px;">
@@ -3255,6 +3267,410 @@
       alert('⚠️ Amazonレポートの自動取込機能は現在準備中です。\n手動で「編集」から登録・修正してください！');
     }
 
+    function readFileAsTextAsync(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (e) => resolve(e.target.result);
+        reader.onerror = reject;
+        // 💡 Amazonの注文レポート(TXT)は伝統的にShift_JIS、ペイメントレポート(CSV)はUTF-8で出力される
+        const encoding = file.name.toLowerCase().endsWith('.txt') ? 'Shift_JIS' : 'UTF-8';
+        reader.readAsText(file, encoding);
+      });
+    }
+
+    async function parseFileToReportData(file) {
+      let text = await readFileAsTextAsync(file);
+
+      if (file.name.toLowerCase().endsWith('.csv')) {
+        let tsv = "";
+        let inQuote = false;
+        for (let i = 0; i < text.length; i++) {
+          let c = text[i];
+          if (c === '"') { inQuote = !inQuote; }
+          else if (c === ',' && !inQuote) { tsv += '\t'; }
+          else { tsv += c; }
+        }
+        text = tsv;
+      }
+
+      return parseAmazonReportText(text);
+    }
+
+    // 💡 複数ファイルを一気にドロップ/選択しても、まず全部を読み込んでから、まとめて正しい順番で1回だけ反映する
+    // （ファイルのドロップ順・ブラウザの並び順に関係なく、返金が売上より先に処理されて上書きされる事故を防ぐ）
+    async function processFiles(fileList) {
+      const files = Array.from(fileList);
+      if (files.length === 0) return;
+
+      const dropLabel = document.getElementById('mini-drop-zone');
+      const originalText = dropLabel.innerHTML;
+
+      let combinedReportData = [];
+      let combinedExpenseData = [];
+      const errors = [];
+
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        dropLabel.innerHTML = `⌛ 解析中... (${i + 1}/${files.length}) ${file.name}`;
+        try {
+          const { reportData, expenseData } = await parseFileToReportData(file);
+          if (reportData.length === 0 && expenseData.length === 0) {
+            errors.push(`${file.name}: このファイルから取り込めるデータが見つかりませんでした`);
+            continue;
+          }
+          combinedReportData = combinedReportData.concat(reportData);
+          combinedExpenseData = combinedExpenseData.concat(expenseData);
+        } catch (err) {
+          errors.push(`${file.name}: ${err.message}`);
+        }
+      }
+
+      dropLabel.innerHTML = `⌛ ${files.length}件のファイルをまとめて反映中...`;
+
+      let totalUpdate = 0, totalExp = 0;
+      try {
+        const result = await applyAmazonReportData(combinedReportData, combinedExpenseData);
+        totalUpdate = result.updateCount; totalExp = result.expCount;
+      } catch (err) {
+        errors.push(`反映処理: ${err.message}`);
+      }
+
+      dropLabel.innerHTML = originalText;
+
+      let msg = `【取込完了】\n${files.length}件のファイルを処理しました。\n注文を合計${totalUpdate}件更新し、\n新規の経費を合計${totalExp}件追加しました！`;
+      if (errors.length > 0) {
+        msg += `\n\n⚠️ 以下でエラーが出ました:\n` + errors.join('\n');
+      }
+      alert(msg);
+
+      if (typeof loadLedgerData === 'function' && currentActiveView === 'view-ledger') loadLedgerData();
+      if (typeof loadExpenseListData === 'function' && currentActiveView === 'view-expense') loadExpenseListData();
+    }
+
+    function toIsoDate(raw) {
+      if (!raw) return null;
+      const parts = String(raw).trim().split('/');
+      if (parts.length !== 3) return null;
+      const pad2 = n => String(n).padStart(2, '0');
+      return `${parts[0]}-${pad2(parts[1])}-${pad2(parts[2])}`;
+    }
+
+    function parseAmazonReportText(text) {
+      const lines = text.split(/\r?\n/);
+      const reportData = [];
+      const expenseData = [];
+      let reportType = "";
+      let txtH = {}; let csvH = {};
+
+      const cleanNum = (val) => {
+        if (val === undefined || val === null) return 0;
+        return Number(String(val).replace(/[,円￥\s"]/g, '')) || 0;
+      };
+
+      for (let l of lines) {
+        l = l.trim(); if (!l) continue;
+        let cols = l.split("\t").map(c => c.trim().replace(/^"|"$/g, ''));
+
+        if (cols.includes("amazon-order-id")) { reportType = "TXT"; cols.forEach((h, idx) => { txtH[h] = idx; }); continue; }
+        if (cols.includes("トランザクションの種類") && cols.includes("SKU")) { reportType = "CSV"; cols.forEach((h, idx) => { csvH[h] = idx; }); continue; }
+
+        if (reportType === "TXT" && Object.keys(txtH).length > 0) {
+          let status = cols[txtH["order-status"]] || "";
+          if (status.indexOf("Shipped") === -1) continue;
+          let salesChannelCol = cols[txtH["sales-channel"]] || "";
+          // 💡 sales-channelが「Non-Amazon」の注文は、item-priceが空欄など通常と違うデータ構造になってて
+          //    誤動作の原因になるため取込から除外する
+          if (salesChannelCol.trim() === "Non-Amazon") continue;
+          let channel = cols[txtH["fulfillment-channel"]] || "";
+          let isMerchant = (channel === "Merchant");
+          reportData.push({
+            type: "TXT", isMerchant, sku: cols[txtH["sku"]], orderId: cols[txtH["amazon-order-id"]],
+            date: String(cols[txtH["purchase-date"]] || "").split("T")[0].replace(/-/g, "/"),
+            sales: cleanNum(cols[txtH["item-price"]]), shipping: cleanNum(cols[txtH["shipping-price"]])
+          });
+        }
+
+        if (reportType === "CSV" && Object.keys(csvH).length > 0) {
+          let orderId = cols[csvH["注文番号"]] || "";
+          let transType = cols[csvH["トランザクションの種類"]] || "";
+          let description = cols[csvH["説明"]] || "";
+          let sku = cols[csvH["SKU"]] || "";
+          let getNum = (k) => cleanNum(cols[csvH[k]]);
+
+          // 💡 補填(FBA在庫の紛失・返品による在庫返金)は「返金」ではなく「調整」という種類名で記録される
+          const isAdjustmentRefund = (transType === "調整" && description.includes("FBA在庫の返金"));
+
+          if (!orderId) {
+            // 注文番号が無い「調整」(紛失など)は、SKUだけを頼りに在庫を特定して補填処理する
+            if (isAdjustmentRefund && sku) {
+              let dateStr = cols[csvH["日付/時間"]] || "";
+              reportData.push({ type: "ADJ", sku: sku, date: dateStr.split(" ")[0] || "", hotenCSV: getNum("その他") });
+              continue;
+            }
+            const targetExpTypes = ["FBA 在庫関連の手数料", "注文外料金", "サービス料金"];
+            if (targetExpTypes.includes(transType)) {
+              let amount = getNum("合計");
+              if (amount !== 0) {
+                let dateStr = cols[csvH["日付/時間"]] || "";
+                let dayStr = dateStr.split(" ")[0] || "";
+                let monthParts = dayStr.split("/");
+                let monthStr = monthParts.length >= 2 ? `${monthParts[0]}/${monthParts[1]}` : "";
+                expenseData.push({ month: monthStr, date: dayStr, type: transType, amount: Math.abs(amount), memo: description });
+              }
+            }
+            continue;
+          }
+
+          let fulfillment = cols[csvH["フルフィルメント"]] || "";
+          let mktShip = 0;
+          if (transType === "配送サービス" && description.includes("Amazon 経由で購入した配送ラベル")) {
+            mktShip = getNum("その他");
+          }
+          let isMerchantCSV = (fulfillment === "出品者" || mktShip < 0);
+          let isRefund = (transType === "返金") || isAdjustmentRefund;
+
+          reportData.push({
+            type: "CSV", orderId, isMerchantCSV, isRefund, sku,
+            salesFromCSV: getNum("商品売上") || getNum("商品価格"),
+            shippingFromCSV: getNum("配送料"),
+            mktShipFee: mktShip,
+            refFee: getNum("販売手数料") + getNum("手数料"),
+            fbaFeeCSV: getNum("FBA 手数料"),
+            pointFeeCSV: getNum("Amazonポイントの費用"),
+            promoFeeCSV: getNum("プロモーション割引額"),
+            hotenCSV: getNum("その他")
+          });
+        }
+      }
+
+      return { reportData, expenseData };
+    }
+
+    async function applyAmazonReportData(reportData, expenseData) {
+      if (reportData.length === 0 && expenseData.length === 0) {
+        return { updateCount: 0, expCount: 0 };
+      }
+
+      const { data: fetchedRows, error } = await sb.from('inventories').select('*');
+      if (error) throw error;
+      const rows = fetchedRows.slice(); // 新規複製行をこの配列に追加していく
+
+      const updates = {};
+      const getUpdate = (row) => {
+        if (!updates[row.id]) {
+          updates[row.id] = {
+            sale_date: row.sale_date, order_number: row.order_number,
+            actual_sales: row.actual_sales || 0, actual_shipping: row.actual_shipping || 0,
+            actual_fee: row.actual_fee || 0, profit: row.profit || 0, status_override: row.status_override,
+            sales_channel: row.sales_channel
+          };
+        }
+        return updates[row.id];
+      };
+
+      const isClosed = (row) => {
+        const u = updates[row.id];
+        const status = u ? u.status_override : row.status_override;
+        return status === '返金済み' || status === '補填済み';
+      };
+
+      // 新規複製行の採番用に、既存の最大Noを控えておく
+      let maxNo = 0;
+      rows.forEach(r => { if (r.no && r.no > maxNo) maxNo = r.no; });
+      let tempIdCounter = -1;
+
+      // 💡 SKUで在庫を探す。開いてる(未クローズの)行があればそれを使い、
+      //    無ければ「閉じてる行」の静的情報を複製して新しい行を作る
+      //    （返金・補填で一度閉じたSKUが、Amazon側でそのまま再販された時のため）
+      function findOrCreateRowBySku(sku) {
+        let openRow = rows.find(r => String(r.sku || '').trim() === sku && !isClosed(r));
+        if (openRow) return openRow;
+
+        let closedRow = rows.find(r => String(r.sku || '').trim() === sku);
+        if (!closedRow) return null;
+
+        maxNo += 1;
+        const newRow = {
+          id: tempIdCounter--, _isNew: true,
+          no: maxNo, jan: closedRow.jan, asin: closedRow.asin, title: closedRow.title,
+          model: closedRow.model, sku: closedRow.sku, image_url: closedRow.image_url,
+          condition: closedRow.condition, description: closedRow.description,
+          purchase_date: closedRow.purchase_date, supplier: closedRow.supplier,
+          purchase_url: closedRow.purchase_url, purchase_id: closedRow.purchase_id,
+          // 💡 仕入値・送料経費は0円にする。同じ物理在庫の再販なので、
+          //    その仕入コストはすでに元の行(返金)で損失として計上済み。ここでまた引くと二重計上になる。
+          buy_price: 0, shipping_cost: 0,
+          sell_price: closedRow.sell_price, fba_fee: closedRow.fba_fee, referral_fee: closedRow.referral_fee,
+          is_listed: true,
+          sale_date: null, order_number: null, actual_sales: 0, actual_shipping: 0,
+          actual_fee: 0, profit: 0, status_override: null, sales_channel: null
+        };
+        rows.push(newRow);
+        return newRow;
+      }
+
+      reportData.sort((a, b) => (a.isRefund === b.isRefund ? 0 : a.isRefund ? 1 : -1));
+
+      let updateCount = 0;
+      reportData.forEach(rd => {
+        if (rd.type === "TXT") {
+          let row = rows.find(r => {
+            const sk = String(r.sku || '').trim();
+            const u = updates[r.id];
+            const ord = String((u ? u.order_number : r.order_number) || '').trim();
+            return sk === rd.sku && (ord === "" || ord === rd.orderId) && !isClosed(r);
+          });
+          if (!row) row = findOrCreateRowBySku(rd.sku);
+          if (row) {
+            const u = getUpdate(row);
+            u.sale_date = toIsoDate(rd.date);
+            u.order_number = rd.orderId;
+            u.actual_sales = rd.sales;
+            u.actual_shipping = rd.isMerchant ? 0 : rd.shipping;
+            u.sales_channel = 'Amazon';
+            updateCount++;
+          }
+        }
+        else if (rd.type === "ADJ") {
+          const row = rows.find(r => String(r.sku || '').trim() === rd.sku);
+          if (row) {
+            const u = getUpdate(row);
+            if (!(u.status_override === '返金済み' || u.status_override === '補填済み')) {
+              const m = Number(row.buy_price || 0) + Number(row.shipping_cost || 0);
+              u.actual_sales = rd.hotenCSV;
+              u.actual_shipping = 0;
+              u.actual_fee = 0;
+              u.profit = rd.hotenCSV - m;
+              u.status_override = '補填済み';
+              u.sales_channel = 'Amazon';
+              if (!u.sale_date) u.sale_date = toIsoDate(rd.date);
+            }
+            updateCount++;
+          }
+        }
+        else if (rd.type === "CSV") {
+          let row = null;
+          if (rd.orderId) {
+            row = rows.find(r => {
+              const u = updates[r.id];
+              const ord = String((u ? u.order_number : r.order_number) || '').trim();
+              return ord === rd.orderId;
+            });
+          }
+          if (!row && rd.sku) {
+            row = findOrCreateRowBySku(rd.sku);
+          }
+          if (!row) return;
+
+          const m = Number(row.buy_price || 0) + Number(row.shipping_cost || 0);
+          const u = getUpdate(row);
+          u.sales_channel = 'Amazon';
+          if (!u.order_number) u.order_number = rd.orderId;
+
+          if (rd.isRefund) {
+            if (u.status_override === '返金済み' || u.status_override === '補填済み') {
+              // 💡 すでに返金済み等のマークが付いてても、過去のバグ等で売上額が0円になってなければここで補正救済する
+              if (u.status_override === '返金済み' && (Number(u.actual_sales) || 0) !== 0) {
+                u.actual_sales = 0; u.actual_shipping = 0;
+                u.profit = (Number(u.actual_fee) || 0) - m;
+              }
+              updateCount++; return;
+            }
+
+            const currentSalesForCheck = Number(u.actual_sales) || 0;
+            if (currentSalesForCheck !== 0) {
+              u.actual_sales = 0; u.actual_shipping = 0;
+              const currentFee = Number(u.actual_fee) || 0;
+              u.actual_fee = currentFee + rd.refFee + rd.fbaFeeCSV + rd.pointFeeCSV + rd.promoFeeCSV + rd.hotenCSV;
+              u.profit = u.actual_fee - m;
+            }
+            // 💡 「その他」欄は税金調整などの端数(数十円)で乗ることが多いので、
+            //    まとまった金額(1,000円以上)の時だけ補填として扱う
+            if (rd.hotenCSV >= 1000) {
+              if (rd.salesFromCSV === 0) {
+                // 商品自体は元々売れてない、紛失などの純粋な補填 → 補填額を売上として計上
+                u.actual_sales = rd.hotenCSV; u.profit = rd.hotenCSV - m;
+              }
+              // 商品が売れてた上での返品+補填混在の場合は、直前のブロックで
+              // actual_fee にその他の金額を加算済み・profitもそれで計算済みなのでそのまま
+              u.status_override = '補填済み';
+            } else {
+              u.status_override = '返金済み';
+            }
+          } else {
+            if (rd.isMerchantCSV) {
+              if (rd.mktShipFee < 0) u.actual_shipping = rd.mktShipFee;
+              let merchFeeCalc = rd.refFee + rd.pointFeeCSV + rd.promoFeeCSV;
+              if (merchFeeCalc !== 0) u.actual_fee = merchFeeCalc;
+            } else {
+              let feeCalc = rd.refFee + rd.fbaFeeCSV + rd.pointFeeCSV + rd.promoFeeCSV;
+              if (feeCalc !== 0) u.actual_fee = feeCalc;
+            }
+            const currentSales = Number(u.actual_sales) || 0;
+            if (currentSales === 0 && rd.salesFromCSV !== 0) u.actual_sales = rd.salesFromCSV;
+
+            const r = Number(u.actual_sales) || 0;
+            const t = Number(u.actual_fee) || 0;
+            const s = Number(u.actual_shipping) || 0;
+            u.profit = (r > 0) ? (r + t + s - m) : (r + t + s);
+          }
+          updateCount++;
+        }
+      });
+
+      // 既存行の更新（idはUUIDなので、_isNewフラグの有無で新規複製行と区別する）
+      const existingRowsToUpdate = rows.filter(r => !r._isNew && updates[r.id]);
+      for (const r of existingRowsToUpdate) {
+        await sb.from('inventories').update(updates[r.id]).eq('id', r.id);
+      }
+
+      // 新規複製行の登録（閉じてたSKUがAmazon側で再販された分）
+      const newRows = rows.filter(r => r._isNew);
+      if (newRows.length > 0) {
+        const insertPayload = newRows.map(r => {
+          const u = updates[r.id] || {};
+          return {
+            no: r.no, jan: r.jan, asin: r.asin, title: r.title, model: r.model, sku: r.sku,
+            image_url: r.image_url, condition: r.condition, description: r.description,
+            purchase_date: r.purchase_date, supplier: r.supplier, purchase_url: r.purchase_url,
+            purchase_id: r.purchase_id, buy_price: r.buy_price, shipping_cost: r.shipping_cost,
+            sell_price: r.sell_price, fba_fee: r.fba_fee, referral_fee: r.referral_fee,
+            is_listed: true, user_id: currentUser.id,
+            sale_date: u.sale_date, order_number: u.order_number,
+            actual_sales: u.actual_sales || 0, actual_shipping: u.actual_shipping || 0,
+            actual_fee: u.actual_fee || 0, profit: u.profit || 0,
+            status_override: u.status_override, sales_channel: u.sales_channel
+          };
+        });
+        const { error: insertErr } = await sb.from('inventories').insert(insertPayload);
+        if (insertErr) throw insertErr;
+      }
+
+      let expCount = 0;
+      if (expenseData.length > 0) {
+        const { data: existing } = await sb.from('expenses').select('expense_date, expense_type, amount');
+        const existingKeys = new Set((existing || []).map(ex => `${ex.expense_date}_${ex.expense_type}_${ex.amount}`));
+        const newExpenses = [];
+        expenseData.forEach(ex => {
+          const isoDate = toIsoDate(ex.date);
+          const key = `${isoDate}_${ex.type}_${ex.amount}`;
+          if (!existingKeys.has(key)) {
+            newExpenses.push({
+              user_id: currentUser.id, target_month: ex.month, expense_date: isoDate,
+              expense_type: ex.type, amount: ex.amount, memo: ex.memo, source: '🤖 Amazon自動'
+            });
+            existingKeys.add(key);
+          }
+        });
+        if (newExpenses.length > 0) {
+          const { error: expErr } = await sb.from('expenses').insert(newExpenses);
+          if (!expErr) expCount = newExpenses.length;
+        }
+      }
+
+      return { updateCount, expCount };
+    }
+
     function handleDragOverMini(e) {
       e.preventDefault(); e.stopPropagation();
       e.currentTarget.style.backgroundColor = '#ebf8ff';
@@ -3274,7 +3690,7 @@
       
       const files = e.dataTransfer.files;
       if (files && files.length > 0) {
-        processFile(files[0]);
+        processFiles(files);
       }
     }
 
